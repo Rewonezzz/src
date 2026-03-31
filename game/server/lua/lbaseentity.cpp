@@ -168,25 +168,21 @@ static int CBaseEntity_GetInputDispatchEffectPosition (lua_State *L) {
 
 static int CBaseEntity_Fire(lua_State *L)
 {
-    CBaseEntity *pEntity = luaL_checkentity(L, 1);
-    if (!pEntity)
-        return luaL_error(L, "Expected valid entity at index 1");
+  CBaseEntity *pEntity = luaL_checkentity(L, 1);
+  if (!pEntity)
+      return luaL_error(L, "Expected valid entity at index 1");
 
-    const char *szInput = luaL_checkstring(L, 2);
+  const char *szInput = luaL_checkstring(L, 2);
 
-    variant_t Value;
-    if (lua_gettop(L) >= 3 && lua_isstring(L, 3))
-    {
-        Value.SetString(MAKE_STRING(lua_tostring(L, 3)));
-    }
-    else
-    {
-        Value.SetString(NULL_STRING);
-    }
+  variant_t Value;
+  if (lua_gettop(L) >= 3 && lua_isstring(L, 3))
+    Value.SetString(MAKE_STRING(lua_tostring(L, 3)));
+  else
+    Value.SetString(NULL_STRING);
 
-    float flDelay = 0.0f;
-    if (lua_gettop(L) >= 4 && lua_isnumber(L, 4))
-        flDelay = (float)lua_tonumber(L, 4);
+  float flDelay = 0.0f;
+  if (lua_gettop(L) >= 4 && lua_isnumber(L, 4))
+      flDelay = (float)lua_tonumber(L, 4);
 
 	CBaseEntity *pActivator = NULL;
 	if (lua_gettop(L) >= 5 && lua_isuserdata(L, 5))
@@ -194,12 +190,12 @@ static int CBaseEntity_Fire(lua_State *L)
 
 	CBaseEntity *pCaller = NULL;
 	if (lua_gettop(L) >= 6 && lua_isuserdata(L, 6))
-		pCaller = luaL_checkentity(L, 6);
+	  pCaller = luaL_checkentity(L, 6);
 
-    bool result = pEntity->AcceptInput(szInput, pActivator, pCaller, Value, 0);
+  bool result = pEntity->AcceptInput(szInput, pActivator, pCaller, Value, 0);
 
-    lua_pushboolean(L, result);
-    return 1;
+  lua_pushboolean(L, result);
+  return 1;
 }
 
 static int CBaseEntity_EntityText (lua_State *L) {
