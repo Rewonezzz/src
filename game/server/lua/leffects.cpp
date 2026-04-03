@@ -13,13 +13,21 @@
 
 static int Effect_Disslove( lua_State *L )
 {
-	CEntityDissolve::Create(luaL_checkentity(L, 1), luaL_checkstring(L, 2), luaL_checknumber(L, 3), luaL_checkint(L, 4), NULL );
+	CBaseEntity *pEntity = luaL_checkentity( L, 1 );
+	if ( !pEntity )
+		return luaL_error(L, "Expected valid entity at index 1");
+
+	CEntityDissolve::Create( pEntity, luaL_checkstring( L, 2 ), luaL_checknumber( L, 3 ), luaL_checkint( L, 4 ), NULL );
 	return 1;
 }
 
 static int Effect_Explosion( lua_State *L )
 {
-	ExplosionCreate(luaL_checkvector(L, 1), luaL_checkangle(L, 2), luaL_checkentity(L, 3), luaL_checkint(L, 4), luaL_checkint(L, 5), 
+	CBaseEntity *pOwner = luaL_checkentity( L, 3 );
+	if ( !pOwner )
+		return luaL_error(L, "Expected valid entity at index 3");
+
+	ExplosionCreate(luaL_checkvector(L, 1), luaL_checkangle(L, 2), pOwner, luaL_checkint(L, 4), luaL_checkint(L, 5), 
 	luaL_checkboolean(L, 6), luaL_optnumber(L, 7, 0.0f ), luaL_optboolean(L, 8, false), luaL_optboolean(L, 9, false), luaL_optint(L, 10, -1));
 	return 0;
 }
