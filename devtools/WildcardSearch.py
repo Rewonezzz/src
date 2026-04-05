@@ -1,4 +1,4 @@
-
+# I genuinely have no idea if this fixes shit
 from __future__ import generators
 import os
 import re
@@ -25,7 +25,7 @@ def GetRegExForDOSWildcard( wildcard ):
 	# .       -> \.
 	# ?       -> .
 	reString = dosStyleWildcard.replace( ".", r"\." ).replace( "*", ".*" ).replace( "?", "." )
-	return reString
+	return reString, dirName
 
 
 #
@@ -35,7 +35,7 @@ def GetRegExForDOSWildcard( wildcard ):
 #	print name
 #
 def WildcardSearch( wildcard, bRecurse=0 ):
-	reString = GetRegExForDOSWildcard( wildcard )
+	reString, dirName = GetRegExForDOSWildcard( wildcard )
 	matcher = re.compile( reString, re.IGNORECASE )
 
 	return __GetFiles_R( matcher, dirName, bRecurse )
