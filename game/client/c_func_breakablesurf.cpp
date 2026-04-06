@@ -338,7 +338,13 @@ void C_BreakableSurface::InitMaterial(WinEdge_t nEdgeType, int nEdgeStyle, char 
 	m_pEdge[nEdgeType][nEdgeStyle].m_nRenderIndex  = m_RenderList.InvalidIndex();
 	m_pEdge[nEdgeType][nEdgeStyle].m_nStyle		   = nEdgeStyle;
 	m_pEdge[nEdgeType][nEdgeStyle].m_pMaterialEdge.Init(pMaterialName, TEXTURE_GROUP_CLIENT_EFFECTS);
+#ifndef SBPP
 	m_pEdge[nEdgeType][nEdgeStyle].m_pMaterialEdgeTexture.Init( GetBaseTexture( m_pEdge[nEdgeType][nEdgeStyle].m_pMaterialEdge ) );
+#else
+	ITexture *pTex = GetBaseTexture( m_pEdge[nEdgeType][nEdgeStyle].m_pMaterialEdge );
+	if ( pTex )
+		m_pEdge[nEdgeType][nEdgeStyle].m_pMaterialEdgeTexture.Init( pTex );
+#endif
 }
 
 //-----------------------------------------------------------------------------

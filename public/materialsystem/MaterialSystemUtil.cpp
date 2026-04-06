@@ -210,6 +210,14 @@ void CTextureReference::Shutdown( bool bDeleteIfUnReferenced )
 {
 	if ( m_pTexture && materials )
 	{
+#ifdef MOON
+		Assert( ( (uintptr_t)m_pTexture & 7 ) == 0 );
+		if ( ( (uintptr_t)m_pTexture & 7 ) != 0 )
+		{
+			m_pTexture = NULL;
+			return;
+		}
+#endif
 		m_pTexture->DecrementReferenceCount();
 		if ( bDeleteIfUnReferenced )
 		{
