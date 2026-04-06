@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright Â© 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -81,6 +81,20 @@ static int debugoverlay_ScreenPosition (lua_State *L) {
   return 0;
 }
 
+// YourLocalSunny: defaults
+static int debugoverlay_AddLineOverlayEx(lua_State *L) {
+  Vector start = luaL_checkvector(L, 1);
+  Vector end   = luaL_checkvector(L, 2);
+
+  int r = luaL_optint(L, 3, 255);
+  int g = luaL_optint(L, 4, 255);
+  int b = luaL_optint(L, 5, 255);
+  bool noDepth = luaL_optboolean(L, 6, false);
+  float duration = luaL_optnumber(L, 7, 0.1f);
+
+  debugoverlay->AddLineOverlay(start, end, r, g, b, noDepth, duration);
+  return 0;
+}
 
 static const luaL_Reg debugoverlaylib[] = {
   {"AddBoxOverlay",   debugoverlay_AddBoxOverlay},
@@ -94,6 +108,7 @@ static const luaL_Reg debugoverlaylib[] = {
   {"ClearAllOverlays",   debugoverlay_ClearAllOverlays},
   {"ClearDeadOverlays",   debugoverlay_ClearDeadOverlays},
   {"ScreenPosition",   debugoverlay_ScreenPosition},
+  {"AddLineOverlayEx",   debugoverlay_AddLineOverlayEx},
   {NULL, NULL}
 };
 
