@@ -31,6 +31,8 @@ static const luaL_Reg luasrclibs[] = {
   {LUA_NAVAREALIBNAME, luaopen_CNavArea},
   {LUA_NAVMESHLIBNAME, luaopen_navmesh},
   {LUA_MOVEDATALIBNAME, luaopen_CMoveData},
+	{LUA_BASEFLEXLIBNAME, luaopen_CBaseFlex},
+	{LUA_BASEANIMATINGOVERLAYLIBNAME, luaopen_CBaseAnimatingOverlay},
 #endif
 #else
 #ifdef SBPP

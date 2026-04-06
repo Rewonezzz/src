@@ -60,6 +60,12 @@ LUALIB_API int luaopen_CMoveData(lua_State *L);
 #define LUA_NAVMESHLIBNAME "navmesh"
 LUALIB_API int (luaopen_CNavArea) (lua_State *L);
 LUALIB_API int (luaopen_navmesh) (lua_State *L);
+
+#define LUA_BASEFLEXLIBNAME "CBaseFlex"
+LUALIB_API int (luaopen_CBaseFlex) (lua_State *L);
+
+#define LUA_BASEANIMATINGOVERLAYLIBNAME "CBaseAnimatingOverlay"
+LUALIB_API int (luaopen_CBaseAnimatingOverlay) (lua_State *L);
 #endif
 
 #define LUA_CONTENTSLIBNAME				"CONTENTS"

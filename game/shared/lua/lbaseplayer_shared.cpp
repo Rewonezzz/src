@@ -870,7 +870,11 @@ static int CBasePlayer___index (lua_State *L) {
       lua_getfield(L, -1, field);
       if (lua_isnil(L, -1)) {
         lua_pop(L, 2);
+#ifdef SBPP
+        luaL_getmetatable(L, "CBaseFlex");
+#else
         luaL_getmetatable(L, "CBaseAnimating");
+#endif
         lua_getfield(L, -1, field);
         if (lua_isnil(L, -1)) {
           lua_pop(L, 2);
@@ -885,7 +889,11 @@ static int CBasePlayer___index (lua_State *L) {
     lua_getfield(L, -1, field);
     if (lua_isnil(L, -1)) {
       lua_pop(L, 2);
+#ifdef SBPP
+      luaL_getmetatable(L, "CBaseFlex");
+#else
       luaL_getmetatable(L, "CBaseAnimating");
+#endif
       lua_getfield(L, -1, field);
       if (lua_isnil(L, -1)) {
         lua_pop(L, 2);

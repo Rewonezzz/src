@@ -97,7 +97,12 @@ $Project "Client (SBPP)"
 			$File "$SRCDIR\game\shared\lua\luacachefile.h"
 			$File "$SRCDIR\public\zip_utils.cpp"
 
-			$File "$SRCDIR/game/shared/sbpp/mount.cpp"
+			$File "lua\lc_baseanimatingoverlay.cpp"
+			$File "lua\lc_baseflex.cpp"
+			$File "lua\lc_baseanimatingoverlay.h"
+			$File "lua\lc_baseflex.h"
+
+			$File "$SRCDIR\game\shared\sbpp\mount.cpp"
 		}
 
 		$Folder	"HL2 DLL"

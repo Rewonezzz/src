@@ -1,0 +1,30 @@
+//========== Copyright (C) 2026, Team HL2SB++, All rights reserved. ===========//
+//
+// Purpose:
+//
+//===========================================================================//
+
+#ifndef LC_BASEFLEX_H
+#define LC_BASEFLEX_H
+#ifdef _WIN32
+#pragma once
+#endif
+
+/* type for C_BaseFlex functions */
+typedef C_BaseFlex lua_CBaseFlex;
+
+/*
+** access functions (stack -> C)
+*/
+
+LUA_API lua_CBaseFlex *(lua_toflex)( lua_State * L, int idx );
+
+/*
+** push functions (C -> stack)
+*/
+
+LUA_API void( lua_pushflex )( lua_State *L, lua_CBaseFlex *pEntity );
+
+LUALIB_API lua_CBaseFlex *(luaL_checkflex)( lua_State * L, int narg );
+
+#endif // LC_BASEFLEX_H

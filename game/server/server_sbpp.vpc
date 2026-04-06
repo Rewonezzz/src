@@ -84,7 +84,12 @@ $Project "Server (SBPP)"
 			$File "$SRCDIR\game\shared\lua\luacachefile.h"
 			$File "$SRCDIR\public\zip_utils.cpp"
 
-			$File "$SRCDIR/game/shared/sbpp/mount.cpp"
+			$File "lua\lbaseflex.cpp"
+			$File "lua\lbaseanimatingoverlay.cpp"
+			$File "lua\lbaseanimatingoverlay.h"
+			$File "lua\lbaseflex.h"
+
+			$File "$SRCDIR\game\shared\sbpp\mount.cpp"
 		}
 
 		$Folder "Episodic"

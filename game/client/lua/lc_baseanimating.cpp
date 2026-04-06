@@ -14,6 +14,9 @@
 #include "lbaseplayer_shared.h"
 #include "mathlib/lvector.h"
 #include "lvphysics_interface.h"
+#ifdef SBPP
+#include "lc_baseflex.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -849,6 +852,24 @@ static int CBaseAnimating___index (lua_State *L) {
   return 1;
 }
 
+#ifdef SBPP
+static int CBaseAnimating_ToBaseFlex( lua_State *L )
+{
+	C_BaseAnimating *pAnimating = luaL_checkanimating( L, 1 );
+	C_BaseFlex		*pFlex = dynamic_cast< C_BaseFlex * >( pAnimating );
+	if ( pFlex )
+	{
+		lua_pushflex( L, pFlex );
+		return 1;
+	}
+	else
+	{
+		lua_pushnil( L );
+		return 1;
+	}
+}
+#endif
+
 static int CBaseAnimating___newindex (lua_State *L) {
   CBaseAnimating *pEntity = lua_toanimating(L, 1);
   if (pEntity == NULL) {  /* avoid extra test when d is not 0 */
@@ -1035,6 +1056,9 @@ static const luaL_Reg CBaseAnimatingmeta[] = {
   {"UsesPowerOfTwoFrameBufferTexture", CBaseAnimating_UsesPowerOfTwoFrameBufferTexture},
   {"VPhysicsGetObjectList", CBaseAnimating_VPhysicsGetObjectList},
   {"VPhysicsUpdate", CBaseAnimating_VPhysicsUpdate},
+#ifdef SBPP
+  {"ToBaseFlex", CBaseAnimating_ToBaseFlex},
+#endif
   {"__index", CBaseAnimating___index},
   {"__newindex", CBaseAnimating___newindex},
   {"__eq", CBaseAnimating___eq},
