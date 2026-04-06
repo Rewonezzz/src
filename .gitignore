@@ -51,3 +51,6 @@ source-engine.sln
 !lib/win32/x86/SDL2.pdb
 
 opus/
+
+# I refuse to update the readme once again
+*.md
