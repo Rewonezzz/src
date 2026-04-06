@@ -1,4 +1,4 @@
-
+# Refactored the bad sloppy code, ew.
 import re
 
 
@@ -11,7 +11,7 @@ class DLexToken:
 	"""
 	pass	
 
-
+# For backup
 class DLexState:
 	pass
 
@@ -30,16 +30,16 @@ class DLexer:
 	       If it returns None, then there are no more tokens that match your specifications. 
 		   If it returns a value, then it is a DLexToken with.
 	"""
-
+# python 2 oml
 	def __init__( self, bSkipWhitespace=1 ):
 		self.__tokens = []
 		self.__curTokenID = 0
-		self.__notnewline = re.compile( '[^\\r\\n]*' )
+		self.__notnewline = re.compile( r'[^\r\n]*' )
 		
 		self.__bSkipWhitespace = bSkipWhitespace
 		if bSkipWhitespace:
-			self.__whitespace = re.compile( '[ \\t\\f\\v]+' )
-			self.__newline = re.compile( '[\\r\\n]' )
+			self.__whitespace = re.compile( r'[ \t\f\v]+' )
+			self.__newline = re.compile( r'[\r\n]+' )
 
 
 	def GetErrorTokenID( self ):
@@ -67,17 +67,16 @@ class DLexer:
 		self.__fileLen = state.fileLen
 
 
-	def BeginRead( self, str ):
-		self.__curString = str
+	def BeginRead( self, text ):
+		self.__curString = text
 		self.__lineNumber = 1
 		self.__currentCharacter = 0
-		self.__fileLen = len( str )
+		self.__fileLen = len( text )
 
-
+# Resource leak fixed here.
 	def BeginReadFile( self, fileName ):
-		file = open( fileName, 'r' )
-		self.BeginRead( file.read() )
-		file.close()
+		with open( fileName, 'r' ) as f:
+			self.BeginRead( f.read() )
 
 	
 	def GetToken( self ):
@@ -94,7 +93,7 @@ class DLexer:
 				ret.lineNumber = self.__lineNumber
 				self.__currentCharacter = m.end()
 				return ret
-		
+		# This is for diagnostic, should print and return token error
 		if self.__currentCharacter < self.__fileLen:
 			print "NO MATCH FOR '%s'" % self.__curString[ self.__currentCharacter : self.__currentCharacter+35 ]
 			ret = DLexToken()
@@ -102,7 +101,6 @@ class DLexer:
 			ret.val = self.__curString[ self.__currentCharacter : ]
 			self.__currentCharacter = self.__fileLen
 			return ret
-			#print "%d" % t
 
 		return None
 
@@ -110,8 +108,10 @@ class DLexer:
 	def GetLineNumber( self ):
 		return self.__lineNumber
 
-
+# Fixed potential crash..?
 	def GetPercentComplete( self ):
+		if self.__fileLen == 0:
+			return 0
 		return (self.__currentCharacter * 100) / self.__fileLen
 
 
@@ -122,19 +122,19 @@ class DLexer:
 		else:
 			return ""
 
-
+# Work please I beg of you
 	def __SkipWhitespace( self ):
-		if self.__bSkipWhitespace:
-			while 1:
-				a = self.__whitespace.match( self.__curString, self.__currentCharacter )
-				b = self.__newline.match( self.__curString, self.__currentCharacter )
-				if a:
-					self.__currentCharacter = a.end()
-					continue
-				elif b:
-					self.__currentCharacter = b.end()
-					self.__lineNumber += 1
-					continue
-				else:
-					break
-
+		if not self.__bSkipWhitespace:
+			return
+		while True:
+			a = self.__whitespace.match( self.__curString, self.__currentCharacter )
+			b = self.__newline.match( self.__curString, self.__currentCharacter )
+			if a:
+				self.__currentCharacter = a.end()
+				continue
+			elif b:
+				self.__currentCharacter = b.end()
+				self.__lineNumber += 1
+				continue
+			else:
+				break
