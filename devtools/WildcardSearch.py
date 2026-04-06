@@ -1,5 +1,4 @@
-
-from __future__ import generators
+# I genuinely have no idea if this fixes shit
 import os
 import re
 import stat
@@ -18,14 +17,16 @@ def GetRegExForDOSWildcard( wildcard ):
 	else:
 		dirName = wildcard[0:iLast]
 		dosStyleWildcard = wildcard[iLast+1:]
-		
+
 	# Now generate a regular expression for the search.
 	# DOS     -> RE
 	# *       -> .*
 	# .       -> \.
 	# ?       -> .
-	reString = dosStyleWildcard.replace( ".", r"\." ).replace( "*", ".*" ).replace( "?", "." )
-	return reString
+	# Escape regex special characters first, then replace escaped * and ? with wildcards
+	reString = re.escape( dosStyleWildcard )
+	reString = reString.replace( r"\*", ".*" ).replace( r"\?", "." )
+	return reString, dirName
 
 
 #
@@ -35,27 +36,27 @@ def GetRegExForDOSWildcard( wildcard ):
 #	print name
 #
 def WildcardSearch( wildcard, bRecurse=0 ):
-	reString = GetRegExForDOSWildcard( wildcard )
-	matcher = re.compile( reString, re.IGNORECASE )
+	reString, dirName = GetRegExForDOSWildcard( wildcard )
+	# Anchor to full filename match
+	matcher = re.compile( "^" + reString + "$", re.IGNORECASE )
 
 	return __GetFiles_R( matcher, dirName, bRecurse )
 
 def __GetFiles_R( matcher, dirName, bRecurse ):
-	fileList = []
-	# For each file, see if we can find the regular expression.
-	files = os.listdir( dirName )
+	result = []
+	try:
+		files = os.listdir( dirName )
+	except OSError:
+		return result
 	for baseName in files:
-		filename = dirName + "/" + baseName
-
-		mode = os.stat( filename )[stat.ST_MODE]
+		filename = os.path.join( dirName, baseName )
+		try:
+			mode = os.stat( filename ).st_mode
+		except OSError:
+			continue
 		if stat.S_ISREG( mode ):
-			# Make sure the file matches the search string.
 			if matcher.match( baseName ):
-				fileList.append( filename )
-
+				result.append( filename )
 		elif bRecurse and stat.S_ISDIR( mode ):
-			fileList += __GetFiles_R( matcher, filename, bRecurse )
-
-	return fileList				
-	
-
+			result.extend( __GetFiles_R( matcher, filename, bRecurse ) )
+	return result
