@@ -50,9 +50,6 @@ void LPropertyDialog::PerformLayout()
 	BaseClass::PerformLayout();
 
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYDIALOG_METHOD( "PerformLayout" );
 	END_LUA_CALL_PANEL_METHOD( 0, 0 );
 #endif
@@ -64,12 +61,6 @@ void LPropertyDialog::PerformLayout()
 void LPropertyDialog::OnCommand(const char *command)
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-  {
-    BaseClass::OnCommand(command);
-    return;
-  }
-
 	BEGIN_LUA_CALL_PROPERTYDIALOG_METHOD( "OnCommand" );
 		lua_pushstring( m_lua_State, command );
 	END_LUA_CALL_PANEL_METHOD( 1, 1 );
@@ -86,9 +77,6 @@ void LPropertyDialog::OnCommand(const char *command)
 void LPropertyDialog::OnCancel()
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYDIALOG_METHOD( "OnCancel" );
 	END_LUA_CALL_PANEL_METHOD( 0, 0 );
 #endif
@@ -102,9 +90,6 @@ void LPropertyDialog::OnCancel()
 void LPropertyDialog::OnKeyCodeTyped(KeyCode code)
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYDIALOG_METHOD( "OnKeyCodeTyped" );
 		lua_pushinteger( m_lua_State, code );
 	END_LUA_CALL_PANEL_METHOD( 1, 1 );
@@ -119,9 +104,6 @@ void LPropertyDialog::OnKeyCodeTyped(KeyCode code)
 void LPropertyDialog::OnCursorMoved(int x, int y)
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYDIALOG_METHOD( "OnCursorMoved" );
 		lua_pushinteger( m_lua_State, x );
 		lua_pushinteger( m_lua_State, y );
@@ -135,17 +117,6 @@ void LPropertyDialog::OnCursorMoved(int x, int y)
 bool LPropertyDialog::OnOK(bool applyOnly)
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-  {
-    // the sheet should have the pages apply changes before we tell the world
-    _propertySheet->ApplyChanges();
-
-    // this should tell anybody who's watching us that we're done
-    PostActionSignal(new KeyValues("ApplyChanges"));
-
-    return true;
-  }
-
 	BEGIN_LUA_CALL_PROPERTYDIALOG_METHOD( "OnOK" );
 		lua_pushboolean( m_lua_State, applyOnly );
 	END_LUA_CALL_PANEL_METHOD( 1, 1 );
@@ -412,9 +383,12 @@ static int PropertyDialog___newindex (lua_State *L) {
 
 static int PropertyDialog___gc (lua_State *L) {
   LPropertyDialog *plDialog = dynamic_cast<LPropertyDialog *>(lua_topropertydialog(L, 1));
-  if (plDialog)
+  if (plDialog) {
     --plDialog->m_nRefCount;
-
+	if (plDialog->m_nRefCount <= 0) {
+      delete plDialog;
+    }
+  }
   return 0;
 }
 

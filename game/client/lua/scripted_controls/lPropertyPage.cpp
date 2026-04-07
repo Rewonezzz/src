@@ -1,4 +1,4 @@
-//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -46,9 +46,6 @@ LPropertyPage::~LPropertyPage()
 void LPropertyPage::OnResetData()
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYPAGE_METHOD( "OnResetData" );
 	END_LUA_CALL_PANEL_METHOD( 0, 0 );
 #endif
@@ -60,9 +57,6 @@ void LPropertyPage::OnResetData()
 void LPropertyPage::OnApplyChanges()
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYPAGE_METHOD( "OnApplyChanges" );
 	END_LUA_CALL_PANEL_METHOD( 0, 0 );
 #endif
@@ -74,9 +68,6 @@ void LPropertyPage::OnApplyChanges()
 void LPropertyPage::OnPageShow()
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYPAGE_METHOD( "OnPageShow" );
 	END_LUA_CALL_PANEL_METHOD( 0, 0 );
 #endif
@@ -88,9 +79,6 @@ void LPropertyPage::OnPageShow()
 void LPropertyPage::OnPageHide()
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYPAGE_METHOD( "OnPageHide" );
 	END_LUA_CALL_PANEL_METHOD( 0, 0 );
 #endif
@@ -105,9 +93,6 @@ void LPropertyPage::OnPageTabActivated(Panel *pageTab)
 	_pageTab = pageTab;
 
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-    return;
-
 	BEGIN_LUA_CALL_PROPERTYPAGE_METHOD( "OnPageTabActivated" );
 		lua_pushpanel( m_lua_State, pageTab );
 	END_LUA_CALL_PANEL_METHOD( 1, 0 );
@@ -120,12 +105,6 @@ void LPropertyPage::OnPageTabActivated(Panel *pageTab)
 void LPropertyPage::OnKeyCodeTyped(KeyCode code)
 {
 #ifdef LUA_SDK
-  if ( !m_lua_State )
-  {
-    BaseClass::OnKeyCodeTyped(code);
-    return;
-  }
-
 	BEGIN_LUA_CALL_PROPERTYPAGE_METHOD( "OnKeyCodeTyped" );
 		lua_pushinteger( m_lua_State, code );
 	END_LUA_CALL_PANEL_METHOD( 1, 1 );
@@ -343,9 +322,12 @@ static int PropertyPage___newindex (lua_State *L) {
 
 static int PropertyPage___gc (lua_State *L) {
   LPropertyPage *plPage = dynamic_cast<LPropertyPage *>(lua_topropertypage(L, 1));
-  if (plPage)
+  if (plPage) {
     --plPage->m_nRefCount;
-
+	if (plPage->m_nRefCount <= 0) {
+      delete plPage;
+    }
+  }
   return 0;
 }
 
