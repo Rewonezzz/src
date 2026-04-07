@@ -23,9 +23,6 @@
 #include "variant_t.h"
 #endif
 
-
-ConVar sv_spawnmenu_allowed("sv_spawnmenu_allowed", "1", FCVAR_REPLICATED);
-
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 

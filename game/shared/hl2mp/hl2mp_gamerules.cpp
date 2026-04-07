@@ -171,6 +171,7 @@ static const char *s_PreserveEnts[] =
 
 #ifdef SBPP
 ConVar npc_deathnotice("npc_deathnotice", "1", FCVAR_REPLICATED);
+ConVar sv_spawnmenu_allowed("sv_spawnmenu_allowed", "1", FCVAR_REPLICATED);
 #endif
 
 #ifdef CLIENT_DLL
