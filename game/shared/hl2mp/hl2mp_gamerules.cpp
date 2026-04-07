@@ -360,15 +360,18 @@ bool CHL2MPRules::IsSpawnMenuAllowed( void )
 	bool bNewSpawnMenuAllowed = m_bSpawnMenuAllowed;
 
 #if defined ( LUA_SDK )
-	BEGIN_LUA_CALL_HOOK( "IsSpawnMenuAllowed" );
-	END_LUA_CALL_HOOK( 0, 1 );
+	if ( L )
+	{
+		BEGIN_LUA_CALL_HOOK( "IsSpawnMenuAllowed" );
+		END_LUA_CALL_HOOK( 0, 1 );
 
-	//RETURN_LUA_NUMBER();
+		//RETURN_LUA_NUMBER();
 
-	if ( lua_isboolean( L, -1 ) )
-		bNewSpawnMenuAllowed = luaL_checkboolean( L, -1 );
+		if ( lua_isboolean( L, -1 ) )
+			bNewSpawnMenuAllowed = luaL_checkboolean( L, -1 );
 
-	lua_pop( L, 1 );
+		lua_pop( L, 1 );
+	}
 #endif
 
 	return bNewSpawnMenuAllowed;
@@ -379,15 +382,18 @@ bool CHL2MPRules::IsNoclipAllowed( void )
 	bool bNewNoclipAllowed = m_bNoclipAllowed;
 
 #if defined ( LUA_SDK )
-	BEGIN_LUA_CALL_HOOK( "IsNoclipAllowed" );
-	END_LUA_CALL_HOOK( 0, 1 );
+	if ( L )
+	{
+		BEGIN_LUA_CALL_HOOK( "IsNoclipAllowed" );
+		END_LUA_CALL_HOOK( 0, 1 );
 
-	//RETURN_LUA_NUMBER();
+		//RETURN_LUA_NUMBER();
 
-	if ( lua_isboolean( L, -1 ) )
-		bNewNoclipAllowed = luaL_checkboolean( L, -1 );
+		if ( lua_isboolean( L, -1 ) )
+			bNewNoclipAllowed = luaL_checkboolean( L, -1 );
 
-	lua_pop( L, 1 );
+		lua_pop( L, 1 );
+	}
 #endif
 
 	return bNewNoclipAllowed;
