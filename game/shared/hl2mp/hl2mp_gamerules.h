@@ -146,6 +146,11 @@ public:
 
 #ifdef SBPP
 	virtual bool AllowThirdPersonCamera( void ) OVERRIDE { return true; }
+
+	virtual bool IsSpawnMenuAllowed( void );
+	virtual bool IsNoclipAllowed( void );
+	virtual void SetSpawnMenuAllowed( bool bValue ) ;
+	virtual void SetNoclipAllowed( bool bValue ) ;
 #endif
 
 #ifndef CLIENT_DLL
@@ -230,6 +235,10 @@ private:
 	bool m_bAwaitingReadyRestart;
 	bool m_bHeardAllPlayersReady;
 
+#ifdef SBPP
+	CNetworkVar( bool, m_bNoclipAllowed );
+	CNetworkVar( bool, m_bSpawnMenuAllowed );
+#endif
 #ifndef CLIENT_DLL
 	bool m_bChangelevelDone;
 #endif

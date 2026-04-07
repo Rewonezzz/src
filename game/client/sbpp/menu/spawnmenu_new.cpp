@@ -24,6 +24,7 @@
 #include <algorithm>
 #include "fmtstr.h"
 #include "stb_image.h"
+#include "hl2mp_gamerules.h"
 #ifdef LUA_SDK
 #include "luamanager.h"
 #include "luasrclib.h"
@@ -31,8 +32,6 @@
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
-
-extern ConVar sv_spawnmenu_allowed;
 
 using namespace vgui;
 
@@ -1996,7 +1995,15 @@ void CSpawnMenu::CreateTabs()
 
 void CSpawnMenu::OnTick()
 {
-	if ( !sv_spawnmenu_allowed.GetBool() )
+	// Can't use spawnmenu outside of game!
+	CHL2MPRules *pRules = HL2MPRules();
+	if ( !pRules )
+	{
+		SetVisible( false );
+		return;
+	}
+
+	if ( !pRules->IsSpawnMenuAllowed() )
 	{
 		SetVisible( false );
 		return;

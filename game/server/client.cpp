@@ -1145,14 +1145,16 @@ void EnableNoClip( CBasePlayer *pPlayer )
 	ClientPrint( pPlayer, HUD_PRINTCONSOLE, "noclip ON\n");
 	pPlayer->AddEFlags( EFL_NOCLIP_ACTIVE );
 }
-#ifdef SBPP
-ConVar sv_allow_noclip("sv_allow_noclip", "1");
-#endif
 
 void CC_Player_NoClip( void )
 {
 #ifdef SBPP
-	if ( !sv_allow_noclip.GetBool() )
+	// Can't noclip outside of game!
+	CHL2MPRules *pRules = HL2MPRules();
+	if ( !pRules )
+		return;
+
+	if ( !pRules->IsNoclipAllowed() )
 		return;
 #else
 	if ( !sv_cheats->GetBool() )

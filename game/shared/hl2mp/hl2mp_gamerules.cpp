@@ -171,7 +171,6 @@ static const char *s_PreserveEnts[] =
 
 #ifdef SBPP
 ConVar npc_deathnotice("npc_deathnotice", "1", FCVAR_REPLICATED);
-ConVar sv_spawnmenu_allowed("sv_spawnmenu_allowed", "1", FCVAR_REPLICATED);
 #endif
 
 #ifdef CLIENT_DLL
@@ -263,6 +262,11 @@ CHL2MPRules::CHL2MPRules()
 	m_bChangelevelDone = false;
 
 #endif
+
+#ifdef SBPP
+	m_bNoclipAllowed = false;
+	m_bSpawnMenuAllowed = false;
+#endif
 }
 
 const CViewVectors* CHL2MPRules::GetViewVectors()const
@@ -349,6 +353,56 @@ bool CHL2MPRules::IsIntermission( void )
 
 	return false;
 }
+
+#ifdef SBPP
+bool CHL2MPRules::IsSpawnMenuAllowed( void )
+{
+	bool bNewSpawnMenuAllowed = m_bSpawnMenuAllowed;
+
+#if defined ( LUA_SDK )
+	BEGIN_LUA_CALL_HOOK( "IsSpawnMenuAllowed" );
+	END_LUA_CALL_HOOK( 0, 1 );
+
+	//RETURN_LUA_NUMBER();
+
+	if ( lua_isboolean( L, -1 ) )
+		bNewSpawnMenuAllowed = luaL_checkboolean( L, -1 );
+
+	lua_pop( L, 1 );
+#endif
+
+	return bNewSpawnMenuAllowed;
+}
+
+bool CHL2MPRules::IsNoclipAllowed( void )
+{
+	bool bNewNoclipAllowed = m_bNoclipAllowed;
+
+#if defined ( LUA_SDK )
+	BEGIN_LUA_CALL_HOOK( "IsNoclipAllowed" );
+	END_LUA_CALL_HOOK( 0, 1 );
+
+	//RETURN_LUA_NUMBER();
+
+	if ( lua_isboolean( L, -1 ) )
+		bNewNoclipAllowed = luaL_checkboolean( L, -1 );
+
+	lua_pop( L, 1 );
+#endif
+
+	return bNewNoclipAllowed;
+}
+
+void CHL2MPRules::SetSpawnMenuAllowed( bool bValue )
+{
+	m_bSpawnMenuAllowed = bValue;
+}
+
+void CHL2MPRules::SetNoclipAllowed( bool bValue )
+{
+	m_bNoclipAllowed = bValue;
+}
+#endif
 
 void CHL2MPRules::PlayerKilled( CBasePlayer *pVictim, const CTakeDamageInfo &info )
 {
