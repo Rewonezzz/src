@@ -1,4 +1,4 @@
-//====== Copyright © 1996-2005, Valve Corporation, All rights reserved. =======
+//====== Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. =======
 //
 // Purpose: 
 //
@@ -24,6 +24,16 @@ LUALIB_API int luaopen_vgui (lua_State *L) {
   luaopen_vgui_Frame(L);
   luaopen_vgui_PropertyDialog(L);
   luaopen_vgui_PropertyPage(L);
+#ifdef SBPP
+  luaopen_vgui_ComboBox(L);
+  luaopen_vgui_ImagePanel(L);
+  luaopen_vgui_Menu(L);
+  luaopen_vgui_Label(L);
+  luaopen_vgui_MenuButton(L);
+  luaopen_vgui_RadioButton(L);
+  luaopen_vgui_Slider(L);
+  luaopen_vgui_TextEntry(L);
+#endif
   return 0;
 }
 
