@@ -1,3 +1,12 @@
+# This was hell to fix. Exercise caution.
+# removed the second file reading thing, dont know why
+# cleaned up and fixeed
+from __future__ import print_function
+import io
+import re
+import sys
+import os
+
 # This script is used to parse the results of the Visual C++ /analyze feature.
 # See the 'usage' section for details.
 
@@ -10,13 +19,10 @@
 # not be flagged as a warning. This script remaps warning to 'wrning' in some places so
 # that lists of fixed warnings or old warnings will not trigger warning detection.
 # Similarly it remaps error to 'eror'.
+# Now supports both Python 2 and Python 3 (welcome)
 
 # Typical warning messages might look like this:
 # 2>d:\dota\src\tier1\bitbuf.cpp(1336): warning C6001: Using uninitialized memory 'retval': Lines: 1327, 1328, 1331, 1332, 1333, 1334, 1336
-
-import re
-import sys
-import os
 
 # Grab per-project configuration information from the analyzeconfig package
 import analyzeconfig
@@ -135,7 +141,8 @@ def ParseLog(logName):
 	# This probably could have been designed better, perhaps by having the key
 	# include the line number. Probably not worth changing now.
 	result = {}
-	lines = open(logName).readlines()
+	with io.open(logName, encoding='utf-8', errors='replace') as f:
+		lines = f.readlines()
 
 	# First look for compiler crashes. Joy.
 	if analyzeconfig.abortOnCompilerCrash:
@@ -146,7 +153,7 @@ def ParseLog(logName):
 				compilerCrashes += 1
 				# Print a message in the warning format so that we can see how many times the
 				# compiler crashed on the buildbot waterfall page.
-				print "cl.exe(1): warning : internal compiler error, the compiler has crashed. Aborting code analysis."
+				print("cl.exe(1): warning : internal compiler error, the compiler has crashed. Aborting code analysis.")
 		# If the compiler crashes one or more times then give up.
 		if compilerCrashes > 0:
 			sys.exit(0)
@@ -165,7 +172,7 @@ def ParseLog(logName):
 		if ignored:
 			continue
 		filename = ""
-		type = "warning"
+		warn_type = "warning"
 		# Look for warnings with filename and line number. The groups returned
 		# are:
 		#    file name
@@ -179,7 +186,7 @@ def ParseLog(logName):
 		if not warningMatch:
 			warningMatch = errorRe.match(line)
 			if warningMatch:
-				type = "error"
+				warn_type = "error"
 
 		# We want to record how many errors of a particular type occur in a particular source
 		# file so we create a dictionary with [file name, warning number, isError] as the key.
@@ -188,8 +195,8 @@ def ParseLog(logName):
 			lineNumber = warningMatch.groups()[1]
 			warningNumber = warningMatch.groups()[2]
 			warningText = warningMatch.groups()[3]
-			key = "%s %s in %s" % (type, warningNumber, filename)
-			data = "%s(%s): %s C%s%s" % (filename, lineNumber, type, warningNumber, warningText)
+			key = "%s %s in %s" % (warn_type, warningNumber, filename)
+			data = "%s(%s): %s C%s%s" % (filename, lineNumber, warn_type, warningNumber, warningText)
 			warningCount += 1
 			if key in result:
 				result[key] += [data]
@@ -200,8 +207,8 @@ def ParseLog(logName):
 		elif line.find(": error ") >= 0:
 			if not namePrinted:
 				namePrinted = True
-				print "  Unhandled errors found in '%s'" % logName
-			print "    %s" % line.strip()
+				print("  Unhandled errors found in '%s'" % logName)
+			print("    %s" % line.strip())
 
 	uniqueWarningCount = 0
 	uniqueInformationalCount = 0
@@ -214,8 +221,8 @@ def ParseLog(logName):
 		else:
 			uniqueWarningCount += count
 
-	print "%d lines of output in %s, %d issues found, %d ignored, plus %d informational." % (len(lines), logName, uniqueWarningCount, ignoredCount, uniqueInformationalCount)
-	print ""
+	print("%d lines of output in %s, %d issues found, %d ignored, plus %d informational." % (len(lines), logName, uniqueWarningCount, ignoredCount, uniqueInformationalCount))
+	print()
 	return result
 
 
@@ -242,7 +249,7 @@ def PrintEntries(newEntries, prefix, sanitize):
 			if sanitize:
 				newEntry = newEntry.replace(": warning", ": wrning")
 				newEntry = newEntry.replace(": error", ": eror")
-			print "%s%s" % (prefix, Cleanup(newEntry))
+			print("%s%s" % (prefix, Cleanup(newEntry)))
 
 
 
@@ -307,29 +314,29 @@ def DumpNewWarnings(old, new, oldname, newname):
 	# new warnings together, with the fatal warnings first.
 	# The colons at the beginning of blank lines are so that buildbot's BuildAnalyze.createSummary
 	# will retain those lines.
-	for type in ["Fatal", "Fatal-when-new", "New"]:
+	for type_label in ["Fatal", "Fatal-when-new", "New"]:
 		fixing = "required"
-		if type == "New":
+		if type_label == "New":
 			fixing = "optional"
-		message = "%s warning or warnings found. Fixing these is %s:\n:" % (type, fixing)
+		message = "%s warning or warnings found. Fixing these is %s:\n:" % (type_label, fixing)
 		for key in new.keys():
 			newEntries = new[key]
 			match = parseKeyRe.match(key)
 			warningNumber = int(match.groups()[1])
 			if warningNumber in alwaysFatalWarnings:
-				if type == "Fatal":
-					print message
+				if type_label == "Fatal":
+					print(message)
 					message = ":"
 					PrintEntries(newEntries, "    ", False)
 			elif not key in old:
 				if warningNumber in fatalWhenNewWarnings:
-					if type == "Fatal-when-new":
-						print message
+					if type_label == "Fatal-when-new":
+						print(message)
 						message = ":"
 						PrintEntries(newEntries, "    ", False)
 				else:
-					if type == "New":
-						print message
+					if type_label == "New":
+						print(message)
 						message = ":"
 						PrintEntries(newEntries, "    ", False)
 
@@ -337,33 +344,33 @@ def DumpNewWarnings(old, new, oldname, newname):
 		# string, which means some warnings of this type were printed, which means we should
 		# print a separator.
 		if len(message) < 2:
-			print ":\n:\n:\n:\n:"
+			print(":\n:\n:\n:\n:")
 
 
 
 	if warningsFixed:
-		print "\n\n\n\n\nOld issues that have been fixed:"
+		print("\n\n\n\n\nOld issues that have been fixed:")
 		for key in old.keys():
 			oldEntries = old[key]
 			if not key in new:
-				print "Warning fixed in %s:" % newname
-				print "%d times:" % len(oldEntries)
+				print("Warning fixed in %s:" % newname)
+				print("%d times:" % len(oldEntries))
 				PrintEntries(oldEntries, "    ", True)
-				print ""
+				print()
 			else:
 				newEntries = new[key]
 				# Disable printing decreased warning counts -- too much noise.
 				if False and len(newEntries) < len(oldEntries):
-					print "Decreased wrning count:"
-					print "    Old (%s):" % oldname
-					print "    %d times:" % len(oldEntries)
+					print("Decreased wrning count:")
+					print("    Old (%s):" % oldname)
+					print("    %d times:" % len(oldEntries))
 					PrintEntries(oldEntries, "        ", True)
-					print "    New (%s):" % newname
-					print "    %d times:" % len(newEntries)
+					print("    New (%s):" % newname)
+					print("    %d times:" % len(newEntries))
 					PrintEntries(newEntries, "        ", True)
-					print ""
+					print()
 
-	print "\n\n\n"
+	print("\n\n\n")
 	warningStats = []
 	for warningNumber in warningCounts.keys():
 		warningCount = warningCounts[warningNumber]
@@ -386,16 +393,14 @@ def DumpNewWarnings(old, new, oldname, newname):
 			# Replace warning/error with wrning/eror so that these warning summaries don't trigger the
 			# warning detection logic.
 			description = ", example: %s" % sampleWarnings[warningNumber].replace("warning", "wrning").replace("error", "eror")
-		print "%3d occurrences of C%d, changed %d%s" % (warningStat[0], warningStat[1], warningStat[2], description)
-
+		print("%3d occurrences of C%d, changed %d%s" % (warningStat[0], warningStat[1], warningStat[2], description))
+  # Fixed something regex here
 	# Print a summary of all stack related warnings in the new data, regardless of whether they were in the old.
-	bigStackCulprits = {}
-	allocaCulprits = {}
 	# c:\src\simplify.cpp(1840): warning C6262: : Function uses '28708' bytes of stack: exceeds /analyze:stacksize'16384'. Consider moving some data to heap
-	stackUsedRe = re.compile("(.*): warning C6262: Function uses '(\d*)' .*")
-	print "\n\n\n"
-	print "Stack related summary:"
-	print "C6263: Using _alloca in a loop: this can quickly overflow stack"
+	stackUsedRe = re.compile(r"(.*): warning C6262: Function uses '(\d*)' .*")
+	print("\n\n\n")
+	print("Stack related summary:")
+	print("C6263: Using _alloca in a loop: this can quickly overflow stack")
 	bigStackCulprits = []
 	for key in new.keys():
 		# warning C6262: Function uses '400352' bytes of stack
@@ -404,7 +409,6 @@ def DumpNewWarnings(old, new, oldname, newname):
 		if stackMatch:
 			warningNumber = stackMatch.groups()[1]
 			if warningNumber == "6262":
-				#print "Found warning %s in %s" % (warningNumber, stackMatch.groups()[2])
 				entries = new[key]
 				printed = {}
 				for entry in entries:
@@ -416,19 +420,18 @@ def DumpNewWarnings(old, new, oldname, newname):
 							printed[entry] = True
 							bigStackCulprits.append((stackBytes, location))
 			elif warningNumber == "6263":
-				#print "Found warning %s in %s" % (warningNumber, stackMatch.groups()[2])
 				entries = new[key]
 				printed = {}
 				for entry in entries:
 					if not entry in printed:
-						print Cleanup(entry[:entry.find(": ")])
+						print(Cleanup(entry[:entry.find(": ")]))
 						printed[entry] = True
 
-	print "\n\n"
-	print "C6262: Functions that use many bytes of stack"
+	print("\n\n")
+	print("C6262: Functions that use many bytes of stack")
 	bigStackCulprits.sort()
 	bigStackCulprits.reverse()
-	print "filename(linenumber): bytes"
+	print("filename(linenumber): bytes")
 	# Print a sorted summary of functions using excessive stack. It would be tidier
 	# to print the size first (better alignment) but then the output can't be used
 	# in the Visual Studio output window to jump to the code in question.
@@ -438,24 +441,25 @@ def DumpNewWarnings(old, new, oldname, newname):
 	for val in bigStackCulprits:
 		lengths.append(len(Cleanup(val[1])))
 	lengths.sort()
-	if len(lengths) > 0:
-		# Set the length at the 9xth percentile so that most of the sizes
-		# are lined up.
-		formatLength = lengths[int(len(lengths)*.97)]
+	if lengths:
+		# Use the actual 97th percentile for alignment width
+		idx = int(len(lengths) * 0.97)
+		if idx >= len(lengths):
+			idx = len(lengths) - 1
+		formatLength = lengths[idx]
 		formatString = "%%-%ds: %%7d" % formatLength
 		for val in bigStackCulprits:
-			print formatString % (Cleanup(val[1]), val[0])
+			print(formatString % (Cleanup(val[1]), val[0]))
 
 	# Print a list of all of the outstanding warnings
-	print "\n\n\n"
-	print "Outstanding warnings are:"
+	print("\n\n\n")
+	print("Outstanding warnings are:")
 	DumpWarnings(new, True)
 	return (errorCode, fatalWarningsFound)
 
 
 
 def DumpWarnings(new, ignoreInformational):
-	filePrinted = {}
 	# If we just scan the dictionary then warnings will be grouped
 	# by warning-number-in-file, but different warning numbers from the
 	# same file will be scattered, and different files from the same
@@ -466,14 +470,14 @@ def DumpWarnings(new, ignoreInformational):
 	warningsByFile = {}
 	for key in new.keys():
 		match = parseKeyRe.match(key)
-		type, warningNumber, filename = match.groups()
+		warn_type, warningNumber, filename = match.groups()
 		if filename in warningsByFile:
 			warningsByFile[filename].append(key)
 		else:
 			warningsByFile[filename] = [key]
 
 	filenames = warningsByFile.keys()
-	filenames.sort();
+	filenames.sort()
 
 	for filename in filenames:
 		for key in warningsByFile[filename]:
@@ -483,14 +487,14 @@ def DumpWarnings(new, ignoreInformational):
 				pass
 			else:
 				newEntries = new[key]
-				print "%d times:" % len(newEntries)
+				print("%d times:" % len(newEntries))
 				PrintEntries(newEntries, "    ", True)
-				print ""
+				print()
 
 	if ignoreInformational:
 		# Print the 6244 and 6246 warnings together in a group. We print
 		# them here so that they are sorted by file name.
-		print "\n\n\nVariable shadowing warnings"
+		print("\n\n\nVariable shadowing warnings")
 		for filename in filenames:
 			for key in warningsByFile[filename]:
 				match = parseKeyRe.match(key)
@@ -498,7 +502,7 @@ def DumpWarnings(new, ignoreInformational):
 				if warningNumber == "6244" or warningNumber == "6246":
 					newEntries = new[key]
 					PrintEntries(newEntries, "    ", True)
-		print ""
+		print()
 
 
 
@@ -509,28 +513,29 @@ def GetLogFileName(arg):
 	# to the lkg model.
 	if arg == "lkg" or arg == "2":
 		try:
-			lines = open(lkgFilename).readlines()
+			with io.open(lkgFilename, encoding='utf-8', errors='replace') as f:
+				lines = f.readlines()
 			if len(lines) > 0:
 				result = lines[0].strip()
-				print "LKG analysis results are in '%s'" % result
+				print("LKG analysis results are in '%s'" % result)
 				return result
 			else:
-				print "No data found in %s" % lkgFilename
+				print("No data found in %s" % lkgFilename)
 		except IOError:
-			print "Failed to open %s" % lkgFilename
+			print("Failed to open %s" % lkgFilename)
 			arg = 2
-
+# Specified exception types so it avoids dumb stuff
 	try:
 		x = int(arg)
-	except:
+	except (TypeError, ValueError):
 		return arg
 
 	if x <= 0:
-		print "Numerical arguments must be from 1 to numlogs (%s)" % arg
+		print("Numerical arguments must be from 1 to numlogs (%s)" % arg)
 		sys.exit(10)
 	basedir = r"."
 	dirEntries = os.listdir(basedir)
-	logRe = re.compile(r"analyze(.*)_cl_(\d+).txt");
+	logRe = re.compile(r"analyze(.*)_cl_(\d+).txt")
 	logs = []
 	for entry in dirEntries:
 		if logRe.match(entry):
@@ -543,17 +548,17 @@ def GetLogFileName(arg):
 
 
 if len(sys.argv) < 2:
-	print "Usage:"
-	print "To get a comparison between two error log files:"
-	print "    Syntax: parseerrors newlogfile oldlogfile"
-	print "To get a summary of a single log file:"
-	print "    Syntax: parseerrors logfile"
-	print "To get a summary of the two most recent log files:"
-	print "    Syntax: parseerrors 1 2"
-	print "Log files can also be indicated by number where '1' is the"
-	print "most recent, '2' is second oldest, etc."
+	print("Usage:")
+	print("To get a comparison between two error log files:")
+	print("    Syntax: parseerrors newlogfile oldlogfile")
+	print("To get a summary of a single log file:")
+	print("    Syntax: parseerrors logfile")
+	print("To get a summary of the two most recent log files:")
+	print("    Syntax: parseerrors 1 2")
+	print("Log files can also be indicated by number where '1' is the")
+	print("most recent, '2' is second oldest, etc.")
 	sys.exit(0)
-
+# boolean fix
 newname = GetLogFileName(sys.argv[1])
 resultnew = ParseLog(newname)
 if len(sys.argv) >= 3:
@@ -562,13 +567,13 @@ if len(sys.argv) >= 3:
 	result = DumpNewWarnings(resultold, resultnew, oldname, newname)
 	errorCode = result[0]
 	fatalWarningsFound = result[1]
-	if fatalWarningsFound == 0:
+	if not fatalWarningsFound:
 		if analyzeconfig.updateLastKnownGood:
-			print "Updating last-known-good."
-			lkgOutput = open(lkgFilename, "wt")
-			lkgOutput.write(newname)
+			print("Updating last-known-good.")
+			with io.open(lkgFilename, "wt", encoding='utf-8') as lkgOutput:
+				lkgOutput.write(newname)
 		else:
-			print "Updating last-known-good is disabled."
+			print("Updating last-known-good is disabled.")
 	sys.exit(errorCode)
 else:
 	DumpWarnings(resultnew, False)
