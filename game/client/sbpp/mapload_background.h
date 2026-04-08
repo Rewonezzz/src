@@ -72,19 +72,38 @@ public:
 
 		char imageName[MAX_PATH] = "";
 
-		FileFindHandle_t findhandle;
-		char			 searchPattern[MAX_PATH];
-		Q_snprintf( searchPattern, sizeof( searchPattern ), "maps/thumb/%s.*", mapName );
+		const char *extensions[] = { ".png", ".jpg", ".jpeg", ".tga", ".vtf" };
+		bool		foundExactMatch = false;
 
-		const char *foundFile = g_pFullFileSystem->FindFirstEx( searchPattern, "MOD", &findhandle );
-		if ( foundFile && *foundFile )
+		for ( int i = 0; i < 5; i++ )
 		{
-			Q_snprintf( imageName, sizeof( imageName ), "maps/thumb/%s", foundFile );
-			g_pFullFileSystem->FindClose( findhandle );
+			char testPath[MAX_PATH];
+			Q_snprintf( testPath, sizeof( testPath ), "maps/thumb/%s%s", mapName, extensions[i] );
+
+			if ( g_pFullFileSystem->FileExists( testPath, "MOD" ) )
+			{
+				Q_strncpy( imageName, testPath, sizeof( imageName ) );
+				foundExactMatch = true;
+				break;
+			}
 		}
-		else
+
+		if ( !foundExactMatch )
 		{
-			Q_strncpy( imageName, "materials/gui/noicon.png", sizeof( imageName ) );
+			FileFindHandle_t findhandle;
+			char			 searchPattern[MAX_PATH];
+			Q_snprintf( searchPattern, sizeof( searchPattern ), "maps/thumb/%s.*", mapName );
+
+			const char *foundFile = g_pFullFileSystem->FindFirstEx( searchPattern, "MOD", &findhandle );
+			if ( foundFile && *foundFile )
+			{
+				Q_snprintf( imageName, sizeof( imageName ), "maps/thumb/%s", foundFile );
+				g_pFullFileSystem->FindClose( findhandle );
+			}
+			else
+			{
+				Q_strncpy( imageName, "materials/gui/noicon.png", sizeof( imageName ) );
+			}
 		}
 
 		m_pMapIcon->DeletePanel();
