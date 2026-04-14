@@ -49,7 +49,7 @@ LUALIB_API lua_CBaseFlex *luaL_checkflex( lua_State *L, int narg )
 
 static int CBaseFlex_SetFlexWeight_ByName( lua_State *L )
 {
-	luaL_checkflex( L, 1 )->SetFlexWeight( luaL_checkstring( L, 2 ), (float)luaL_checknumber( L, 3 ) );
+	luaL_checkflex( L, 1 )->SetFlexWeight( const_cast< char * >( luaL_checkstring( L, 2 ) ), (float)luaL_checknumber( L, 3 ) );
 	return 0;
 }
 
@@ -61,7 +61,7 @@ static int CBaseFlex_SetFlexWeight_ByIndex( lua_State *L )
 
 static int CBaseFlex_GetFlexWeight_ByName( lua_State *L )
 {
-	lua_pushnumber( L, luaL_checkflex( L, 1 )->GetFlexWeight( luaL_checkstring( L, 2 ) ) );
+	lua_pushnumber( L, luaL_checkflex( L, 1 )->GetFlexWeight( const_cast< char * >( luaL_checkstring( L, 2 ) ) ) );
 	return 1;
 }
 
