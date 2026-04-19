@@ -89,6 +89,18 @@ $Project "Server (SBPP)"
 			$File "lua\lbaseanimatingoverlay.h"
 			$File "lua\lbaseflex.h"
 
+			// nextbots and stuff
+			$File "lua\lnextbot.cpp"
+			$File "lua\lnextbot.h"
+			$File "lua\lnextbotbehaviour.cpp"
+			$File "lua\lnextbotbehaviour.h"
+			$File "lua\lnextbotintention.cpp"
+			$File "lua\lnextbotintention.h"
+			$File "lua\lnextbotlocomotion.cpp"
+			$File "lua\lnextbotlocomotion.h"
+			$File "lua\lnextbotpath.cpp"
+			$File "lua\lnextbotpath.h"
+
 			$File "$SRCDIR\game\shared\sbpp\mount.cpp"
 		}
 

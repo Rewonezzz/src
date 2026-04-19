@@ -24,6 +24,9 @@
 #include "luacachefile.h"
 #include "tier1/lconvar.h"
 #include "licvar.h"
+#ifdef GAME_DLL
+#include "lnextbot.h"
+#endif
 #include "tier0/memalloc.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -275,6 +278,9 @@ void luasrc_shutdown (void) {
 
   lcf_close(L);
   lua_close(L);
+#ifdef SBPP
+  L = NULL;
+#endif
 }
 
 LUA_API int luasrc_dostring (lua_State *L, const char *string) {
@@ -503,6 +509,8 @@ void luasrc_LoadEntities (const char *path)
 								RegisterScriptedTrigger(classBase);
 							else if (Q_strcmp(pszClassname, "CPropVehicleDriveable") == 0)
 								RegisterScriptedVehicle(classBase);
+							else if (Q_strcmp(pszClassname, "CNextBot") == 0)
+								RegisterScriptedNextbot(classBase);
 #endif
 						}
 						lua_pop(L, 2);

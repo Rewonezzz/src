@@ -33,10 +33,17 @@ static const luaL_Reg luasrclibs[] = {
   {LUA_MOVEDATALIBNAME, luaopen_CMoveData},
 	{LUA_BASEFLEXLIBNAME, luaopen_CBaseFlex},
 	{LUA_BASEANIMATINGOVERLAYLIBNAME, luaopen_CBaseAnimatingOverlay},
+  
+	{LUA_NEXTBOT_LOCOMOTIONLIBNAME, luaopen_NextBotLocomotion},
+	{LUA_NEXTBOT_PATHLIBNAME, luaopen_CNextBotPath},
+	{LUA_NEXTBOTLIBNAME, luaopen_CLuaNextBot},
+
 #endif
 #else
 #ifdef SBPP
   {LUA_SPAWNMENULIBNAME, luaopen_sm},
+	{LUA_BASEFLEXLIBNAME, luaopen_CBaseFlex},
+	{LUA_BASEANIMATINGOVERLAYLIBNAME, luaopen_CBaseAnimatingOverlay},
 #endif
 #endif
   {LUA_AMMODEFLIB_NAME, luaopen_AmmoDef},

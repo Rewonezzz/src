@@ -49,17 +49,17 @@ LUALIB_API lua_CBaseFlex *luaL_checkflex( lua_State *L, int narg )
 
 LUALIB_API int luaopen_CBaseFlex( lua_State *L )
 {
-	luaL_newmetatable( L, "CBaseFlex" );
+    luaL_newmetatable( L, "CBaseFlex" );
 
-	luaL_getmetatable( L, "CBaseAnimatingOverlay" );
-	if ( lua_istable( L, -1 ) )
-	{
-		lua_setfield( L, -2, "__index" );
-	}
+    luaL_getmetatable( L, "CBaseAnimatingOverlay" );
+    if ( lua_istable( L, -1 ) )
+        lua_setfield( L, -2, "__index" );
+    else
+        lua_pop( L, 1 );
 
-	lua_pushstring( L, "entity" );
-	lua_setfield( L, -2, "__type" ); /* metatable.__type = "entity" */
+    lua_pushstring( L, "entity" );
+    lua_setfield( L, -2, "__type" );
 
-	lua_pop( L, 1 );
-	return 1;
+    lua_pop( L, 1 );
+    return 1;
 }

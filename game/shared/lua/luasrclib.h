@@ -66,6 +66,16 @@ LUALIB_API int (luaopen_CBaseFlex) (lua_State *L);
 
 #define LUA_BASEANIMATINGOVERLAYLIBNAME "CBaseAnimatingOverlay"
 LUALIB_API int (luaopen_CBaseAnimatingOverlay) (lua_State *L);
+
+#define LUA_NEXTBOT_LOCOMOTIONLIBNAME "NextBotGroundLocomotion"
+LUALIB_API int (luaopen_NextBotLocomotion) (lua_State *L);
+
+#define LUA_NEXTBOT_PATHLIBNAME "NextBotPathFollower"
+LUALIB_API int (luaopen_CNextBotPath)(lua_State *L);
+
+#define LUA_NEXTBOTLIBNAME "NextBot"
+LUALIB_API int (luaopen_CLuaNextBot)(lua_State *L);
+
 #endif
 
 #define LUA_CONTENTSLIBNAME				"CONTENTS"

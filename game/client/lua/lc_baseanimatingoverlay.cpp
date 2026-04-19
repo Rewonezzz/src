@@ -39,17 +39,17 @@ LUALIB_API lua_CBaseAnimatingOverlay *luaL_checkanimatingoverlay( lua_State *L, 
 
 LUALIB_API int luaopen_CBaseAnimatingOverlay( lua_State *L )
 {
-	luaL_newmetatable( L, "CBaseAnimatingOverlay" );
+    luaL_newmetatable( L, "CBaseAnimatingOverlay" );
 
-	luaL_getmetatable( L, "CBaseAnimating" );
-	if ( lua_istable( L, -1 ) )
-	{
-		lua_setfield( L, -2, "__index" );
-	}
+    luaL_getmetatable( L, "CBaseAnimating" );
+    if ( lua_istable( L, -1 ) )
+        lua_setfield( L, -2, "__index" );
+    else
+        lua_pop( L, 1 );
 
-	lua_pushstring( L, "entity" );
-	lua_setfield( L, -2, "__type" );
+    lua_pushstring( L, "entity" );
+    lua_setfield( L, -2, "__type" );
 
-	lua_pop( L, 1 );
-	return 1;
+    lua_pop( L, 1 );
+    return 1;
 }

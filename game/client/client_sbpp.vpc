@@ -109,6 +109,8 @@ $Project "Client (SBPP)"
 			$File "lua\scripted_controls\lMenuButton.cpp"
 			$File "lua\scripted_controls\lRadioButton.cpp"
 			$File "lua\scripted_controls\lComboBox.cpp"
+			$File "lua\lc_nextbot.cpp"
+			$File "lua\lc_nextbot.h"
 
 			$File "$SRCDIR\game\shared\sbpp\mount.cpp"
 		}
