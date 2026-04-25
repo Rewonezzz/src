@@ -127,6 +127,7 @@ extern ConVar tf_mm_servermode;
 
 #ifdef SBPP
 #include "sbpp/mount.h"
+#include "webmanager.h"
 #endif
 
 #ifdef PORTAL
@@ -194,6 +195,9 @@ IMatchmaking *matchmaking = NULL;	// Xbox 360 only
 #if defined( REPLAY_ENABLED )
 IReplaySystem *g_pReplay = NULL;
 IServerReplayContext *g_pReplayServerContext = NULL;
+#endif
+#ifdef SBPP
+CWebManager *g_pWebManager = NULL;
 #endif
 
 IGameSystem *SoundEmitterSystem();
@@ -643,6 +647,8 @@ bool CServerGameDLL::DLLInit( CreateInterfaceFn appSystemFactory,
 	}
 
 #ifdef SBPP
+	g_pWebManager = new CWebManager();
+
 	loadMount();
 #endif
 #ifdef LUA_SDK
@@ -791,6 +797,9 @@ void CServerGameDLL::DLLShutdown( void )
 
 #ifdef CSTRIKE_DLL // BOTPORT: TODO: move these ifdefs out
 	RemoveBotControl();
+#endif
+#ifdef SBPP
+	g_pWebManager->Shutdown();
 #endif
 #ifdef LUA_SDK
 	UnMountAddons();

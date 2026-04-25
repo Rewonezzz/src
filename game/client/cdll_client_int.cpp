@@ -180,6 +180,7 @@ extern vgui::IInputInternal *g_InputInternal;
 #include "sbpp/dynamicsky.h"
 #include "sbpp/gameui/loading.h"
 #include "sbpp/mount.h"
+#include "sbpp/webmanager.h"
 
 #ifdef _WIN32
 #undef MessageBox
@@ -231,6 +232,9 @@ IReplayPerformanceController *g_pReplayPerformanceController = NULL;
 IEngineReplay *g_pEngineReplay = NULL;
 IEngineClientReplay *g_pEngineClientReplay = NULL;
 IReplaySystem *g_pReplay = NULL;
+#endif
+#ifdef SBPP
+CWebManager *g_pWebManager = NULL;
 #endif
 
 IHaptics* haptics = NULL;// NVNT haptics system interface singleton
@@ -1053,6 +1057,8 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CreateInterfaceFn physi
 
 	vgui::VGui_InitMatSysInterfacesList( "ClientDLL", &appSystemFactory, 1 );
 #ifdef SBPP
+	g_pWebManager = new CWebManager();
+
 	CLoadingScreen* loading = new CLoadingScreen();
 	loading->Initialize();
 
@@ -1304,6 +1310,9 @@ void CHLClient::Shutdown( void )
 	g_pSixenseInput->Shutdown();
 	delete g_pSixenseInput;
 	g_pSixenseInput = NULL;
+#endif
+#ifdef SBPP
+	g_pWebManager->Shutdown();
 #endif
 #ifdef LUA_SDK
 	UnMountAddons();

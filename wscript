@@ -97,6 +97,7 @@ projects={
 		'unicode',
 		'video',
 		'lua',
+		'thirdparty/curl',
 	],
 	'tests': [
 		'appframework',
@@ -149,7 +150,8 @@ projects={
 		'vstdlib',
 		'vtf',
 		'stub_steam',
-		'lua'
+		'lua',
+		'thirdparty/curl'
 	]
 }
 
@@ -286,7 +288,8 @@ def define_platform(conf):
 	# @ThePixelMoon: I want to organize my changes from now on,
 	# so do this
 	conf.env.append_unique('DEFINES', [
-		'MOON'
+		'MOON',
+		'CURL_STATICLIB' # ...and also this monstrosity
 	])
 
 	#conf.define('GIT_COMMIT_HASH', conf.env.GIT_VERSION)
@@ -396,6 +399,7 @@ def check_deps(conf):
 		conf.env.FRAMEWORK_COREAUDIO = "CoreAudio"
 		conf.env.FRAMEWORK_AUDIOTOOLBOX = "AudioToolbox"
 		conf.env.FRAMEWORK_SYSTEMCONFIGURATION = "SystemConfiguration"
+		conf.env.FRAMEWORK_SECURITY = "Security"
 
 	if conf.options.TESTS:
 		return
@@ -415,7 +419,10 @@ def check_deps(conf):
 					conf.check_cfg(package='openal', uselib_store='OPENAL', args=['--cflags', '--libs'])
 				conf.check_cfg(package='libjpeg', uselib_store='JPEG', args=['--cflags', '--libs'])
 				conf.check_cfg(package='libpng', uselib_store='PNG', args=['--cflags', '--libs'])
-				conf.check_cfg(package='libcurl', uselib_store='CURL', args=['--cflags', '--libs'])
+				#conf.check_cfg(package='libcurl', uselib_store='CURL', args=['--cflags', '--libs'])
+
+			conf.check(lib='crypto', uselib_store='CRYPTO', args=['--cflags', '--libs'])
+			conf.check(lib='ssl', uselib_store='SSL', args=['--cflags', '--libs'])
 			conf.check_cfg(package='zlib', uselib_store='ZLIB', args=['--cflags', '--libs'])
 
 			if conf.options.OPUS:
@@ -425,7 +432,7 @@ def check_deps(conf):
 		conf.check(lib='freetype2', uselib_store='FT2')
 		conf.check(lib='jpeg', uselib_store='JPEG', define_name='HAVE_JPEG')
 		conf.check(lib='png', uselib_store='PNG', define_name='HAVE_PNG')
-		conf.check(lib='curl', uselib_store='CURL', define_name='HAVE_CURL')
+		#conf.check(lib='curl', uselib_store='CURL', define_name='HAVE_CURL')
 		conf.check(lib='z', uselib_store='ZLIB', define_name='HAVE_ZLIB')
 		if conf.env.DEST_CPU != 'aarch64':
 			conf.check(lib='unwind', uselib_store='UNWIND')
@@ -445,6 +452,7 @@ def check_deps(conf):
 		conf.check(lib='d3d9', uselib_store='D3D9')
 		conf.check(lib='dsound', uselib_store='DSOUND')
 		conf.check(lib='dxguid', uselib_store='DXGUID')
+		conf.check_cc(lib='crypt32', uselib_store='CRYPT32')
 		if conf.options.OPUS:
 			conf.check(lib='opus', uselib_store='OPUS')
 

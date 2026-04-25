@@ -84,6 +84,9 @@ $Project "Server (SBPP)"
 			$File "$SRCDIR\game\shared\lua\luacachefile.h"
 			$File "$SRCDIR\public\zip_utils.cpp"
 
+			$File "$SRCDIR\game\shared\sbpp\webmanager.cpp"
+			$File "$SRCDIR\game\shared\sbpp\webmanager.h"
+
 			$File "lua\lbaseflex.cpp"
 			$File "lua\lbaseanimatingoverlay.cpp"
 			$File "lua\lbaseanimatingoverlay.h"
