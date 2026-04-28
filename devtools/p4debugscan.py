@@ -1,13 +1,14 @@
 # IDK scans shit to do shit
-# this one is likely broken imo
+# this one is likely broken imo, added errno fix
 from __future__ import print_function
 
+import errno
 import os
 import re
 import stat
 import subprocess
 import sys
-from ctypes import windll, create_unicode_buffer
+from ctypes import windll
 
 
 def print_usage():
@@ -20,25 +21,32 @@ def print_usage():
 
 
 def check_dll_debug(filename):
-    # Ensure wide string for LoadLibraryW
-    if sys.version_info[0] == 2:
-        filename = filename.decode('utf-8') if isinstance(filename, str) else filename
-    buf = create_unicode_buffer(filename)
-    hdll = windll.kernel32.LoadLibraryW(buf)
+    # LoadLibraryW expects Unicode; in Python 2 we need to ensure filename is unicode
+    if sys.version_info[0] == 2 and isinstance(filename, str):
+        filename = filename.decode(sys.getfilesystemencoding())
+    hdll = windll.kernel32.LoadLibraryW(filename)
     if not hdll:
         return False
     try:
-        fn_addr = windll.kernel32.GetProcAddress(hdll, b"BuiltDebug")
-        return fn_addr != 0
+        return windll.kernel32.GetProcAddress(hdll, b"BuiltDebug") != 0
     finally:
         windll.kernel32.FreeLibrary(hdll)
+
 
 def get_changelist_numbers(filename, n_revisions):
     cmd = ['p4', 'changes', '-m', str(n_revisions), filename]
     try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, universal_newlines=True)
+        output = subprocess.check_output(
+            cmd, stderr=subprocess.STDOUT, universal_newlines=True
+        )
     except subprocess.CalledProcessError as e:
         print("p4 error: {}".format(e.output), file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            print("Error: 'p4' command not found.", file=sys.stderr)
+        else:
+            print("Error: {}".format(e), file=sys.stderr)
         sys.exit(1)
 
     changelist_numbers = []
@@ -65,7 +73,7 @@ def main():
     if n_revisions == '-1':
         is_debug = check_dll_debug(filename)
         build_type = 'DEBUG' if is_debug else 'RELEASE'
-        print('{0}: {1}'.format(filename, build_type))
+        print('{}: {}'.format(filename, build_type))
     else:
         changelist_numbers = get_changelist_numbers(filename, n_revisions)
         test_dll_filename = 'p4debugscan_test.dll'
@@ -74,13 +82,12 @@ def main():
             for cl_num, date in changelist_numbers:
                 subprocess.check_call(
                     ['p4', 'print', '-q', '-o', test_dll_filename,
-                     '{0}@{1}'.format(filename, cl_num)]
+                     '{}@{}'.format(filename, cl_num)]
                 )
 
                 is_debug = check_dll_debug(test_dll_filename)
                 build_type = 'DEBUG' if is_debug else 'RELEASE'
-                print('{0}: {1}@{2} - {3}'.format(
-                    date, filename, cl_num, build_type))
+                print('{}: {}@{} - {}'.format(date, filename, cl_num, build_type))
         finally:
             # Always clean up the temp file, even on error
             if os.path.exists(test_dll_filename):
