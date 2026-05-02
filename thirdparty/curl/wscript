@@ -2,225 +2,230 @@ import os
 import shutil
 
 CURL_SOURCES = [
-    'lib/altsvc.c',
-    'lib/asyn-thread.c',
-    'lib/base64.c',
-    'lib/bufref.c',
-    'lib/conncache.c',
-    'lib/connect.c',
-    'lib/content_encoding.c',
-    'lib/cookie.c',
-    'lib/curl_addrinfo.c',
-    'lib/curl_ctype.c',
-    'lib/curl_des.c',
-    'lib/curl_endian.c',
-    'lib/curl_fnmatch.c',
-    'lib/curl_gethostname.c',
-    'lib/curl_get_line.c',
-    'lib/curl_gssapi.c',
-    'lib/curl_memrchr.c',
-    'lib/curl_multibyte.c',
-    'lib/curl_ntlm_core.c',
-    'lib/curl_ntlm_wb.c',
-    'lib/curl_path.c',
-    'lib/curl_range.c',
-    'lib/curl_sasl.c',
-    'lib/curl_sspi.c',
-    'lib/curl_threads.c',
-    'lib/dict.c',
-    'lib/doh.c',
-    'lib/dotdot.c',
-    'lib/dynbuf.c',
-    'lib/easy.c',
-    'lib/easygetopt.c',
-    'lib/easyoptions.c',
-    'lib/escape.c',
-    'lib/file.c',
-    'lib/fileinfo.c',
-    'lib/formdata.c',
-    'lib/ftp.c',
-    'lib/ftplistparser.c',
-    'lib/getenv.c',
-    'lib/getinfo.c',
-    'lib/gopher.c',
-    'lib/hash.c',
-    'lib/hmac.c',
-    'lib/hostasyn.c',
-    'lib/hostcheck.c',
-    'lib/hostip.c',
-    'lib/hostip4.c',
-    'lib/hostip6.c',
-    'lib/hostsyn.c',
-    'lib/hsts.c',
-    'lib/http.c',
-    'lib/http2.c',
-    'lib/http_aws_sigv4.c',
-    'lib/http_chunks.c',
-    'lib/http_digest.c',
-    'lib/http_negotiate.c',
-    'lib/http_ntlm.c',
-    'lib/http_proxy.c',
-    'lib/if2ip.c',
-    'lib/imap.c',
-    'lib/inet_ntop.c',
-    'lib/inet_pton.c',
-    'lib/llist.c',
-    'lib/md4.c',
-    'lib/md5.c',
-    'lib/memdebug.c',
-    'lib/mime.c',
-    'lib/mprintf.c',
-    'lib/mqtt.c',
-    'lib/multi.c',
-    'lib/netrc.c',
-    'lib/non-ascii.c',
-    'lib/nonblock.c',
-    'lib/parsedate.c',
-    'lib/pingpong.c',
-    'lib/pop3.c',
-    'lib/progress.c',
-    'lib/psl.c',
-    'lib/rand.c',
-    'lib/rename.c',
-    'lib/rtsp.c',
-    'lib/select.c',
-    'lib/sendf.c',
-    'lib/setopt.c',
-    'lib/sha256.c',
-    'lib/share.c',
-    'lib/slist.c',
-    'lib/smb.c',
-    'lib/smtp.c',
-    'lib/socketpair.c',
-    'lib/socks.c',
-    'lib/socks_gssapi.c',
-    'lib/socks_sspi.c',
-    'lib/speedcheck.c',
-    'lib/splay.c',
-    'lib/strcase.c',
-    'lib/strdup.c',
-    'lib/strerror.c',
-    'lib/strtok.c',
-    'lib/strtoofft.c',
-    'lib/telnet.c',
-    'lib/tftp.c',
-    'lib/timeval.c',
-    'lib/transfer.c',
-    'lib/url.c',
-    'lib/urlapi.c',
-    'lib/version.c',
-    'lib/warnless.c',
-    'lib/wildcard.c',
-    'lib/x509asn1.c',
+	'lib/altsvc.c',
+	'lib/asyn-thread.c',
+	'lib/base64.c',
+	'lib/bufref.c',
+	'lib/conncache.c',
+	'lib/connect.c',
+	'lib/content_encoding.c',
+	'lib/cookie.c',
+	'lib/curl_addrinfo.c',
+	'lib/curl_ctype.c',
+	'lib/curl_des.c',
+	'lib/curl_endian.c',
+	'lib/curl_fnmatch.c',
+	'lib/curl_gethostname.c',
+	'lib/curl_get_line.c',
+	'lib/curl_gssapi.c',
+	'lib/curl_memrchr.c',
+	'lib/curl_multibyte.c',
+	'lib/curl_ntlm_core.c',
+	'lib/curl_ntlm_wb.c',
+	'lib/curl_path.c',
+	'lib/curl_range.c',
+	'lib/curl_sasl.c',
+	'lib/curl_sspi.c',
+	'lib/curl_threads.c',
+	'lib/dict.c',
+	'lib/doh.c',
+	'lib/dotdot.c',
+	'lib/dynbuf.c',
+	'lib/easy.c',
+	'lib/easygetopt.c',
+	'lib/easyoptions.c',
+	'lib/escape.c',
+	'lib/file.c',
+	'lib/fileinfo.c',
+	'lib/formdata.c',
+	'lib/ftp.c',
+	'lib/ftplistparser.c',
+	'lib/getenv.c',
+	'lib/getinfo.c',
+	'lib/gopher.c',
+	'lib/hash.c',
+	'lib/hmac.c',
+	'lib/hostasyn.c',
+	'lib/hostcheck.c',
+	'lib/hostip.c',
+	'lib/hostip4.c',
+	'lib/hostip6.c',
+	'lib/hostsyn.c',
+	'lib/hsts.c',
+	'lib/http.c',
+	'lib/http2.c',
+	'lib/http_aws_sigv4.c',
+	'lib/http_chunks.c',
+	'lib/http_digest.c',
+	'lib/http_negotiate.c',
+	'lib/http_ntlm.c',
+	'lib/http_proxy.c',
+	'lib/if2ip.c',
+	'lib/imap.c',
+	'lib/inet_ntop.c',
+	'lib/inet_pton.c',
+	'lib/llist.c',
+	'lib/md4.c',
+	'lib/md5.c',
+	'lib/memdebug.c',
+	'lib/mime.c',
+	'lib/mprintf.c',
+	'lib/mqtt.c',
+	'lib/multi.c',
+	'lib/netrc.c',
+	'lib/non-ascii.c',
+	'lib/nonblock.c',
+	'lib/parsedate.c',
+	'lib/pingpong.c',
+	'lib/pop3.c',
+	'lib/progress.c',
+	'lib/psl.c',
+	'lib/rand.c',
+	'lib/rename.c',
+	'lib/rtsp.c',
+	'lib/select.c',
+	'lib/sendf.c',
+	'lib/setopt.c',
+	'lib/sha256.c',
+	'lib/share.c',
+	'lib/slist.c',
+	'lib/smb.c',
+	'lib/smtp.c',
+	'lib/socketpair.c',
+	'lib/socks.c',
+	'lib/socks_gssapi.c',
+	'lib/socks_sspi.c',
+	'lib/speedcheck.c',
+	'lib/splay.c',
+	'lib/strcase.c',
+	'lib/strdup.c',
+	'lib/strerror.c',
+	'lib/strtok.c',
+	'lib/strtoofft.c',
+	'lib/telnet.c',
+	'lib/tftp.c',
+	'lib/timeval.c',
+	'lib/transfer.c',
+	'lib/url.c',
+	'lib/urlapi.c',
+	'lib/version.c',
+	'lib/warnless.c',
+	'lib/wildcard.c',
+	'lib/x509asn1.c',
 
-    # vauth
-    'lib/vauth/cleartext.c',
-    'lib/vauth/cram.c',
-    'lib/vauth/digest.c',
-    'lib/vauth/ntlm.c',
-    'lib/vauth/oauth2.c',
-    'lib/vauth/vauth.c',
+	# vauth
+	'lib/vauth/cleartext.c',
+	'lib/vauth/cram.c',
+	'lib/vauth/digest.c',
+	'lib/vauth/ntlm.c',
+	'lib/vauth/oauth2.c',
+	'lib/vauth/vauth.c',
 
-    # vtls
-    'lib/vtls/keylog.c',
-    'lib/vtls/vtls.c',
+	# vtls
+	'lib/vtls/keylog.c',
+	'lib/vtls/vtls.c',
 ]
 
 CURL_SOURCES_WIN32 = [
-    'lib/system_win32.c',
-    'lib/version_win32.c',
-    'lib/idn_win32.c',
+	'lib/system_win32.c',
+	'lib/version_win32.c',
+	'lib/idn_win32.c',
 
-    # vauth SSPI
-    'lib/vauth/digest_sspi.c',
-    'lib/vauth/krb5_sspi.c',
-    'lib/vauth/ntlm_sspi.c',
-    'lib/vauth/spnego_sspi.c',
+	# vauth SSPI
+	'lib/vauth/digest_sspi.c',
+	'lib/vauth/krb5_sspi.c',
+	'lib/vauth/ntlm_sspi.c',
+	'lib/vauth/spnego_sspi.c',
 
-    # vtls
-    'lib/vtls/schannel.c',
-    'lib/vtls/schannel_verify.c',
+	# vtls
+	'lib/vtls/schannel.c',
+	'lib/vtls/schannel_verify.c',
 ]
 
 CURL_SOURCES_DARWIN = [
-    # vauth
-    'lib/vauth/spnego_gssapi.c',
-    'lib/vauth/krb5_gssapi.c',
+	# vauth
+	'lib/vauth/spnego_gssapi.c',
+	'lib/vauth/krb5_gssapi.c',
 
-    # vtls
-    'lib/vtls/sectransp.c',
+	# vtls
+	'lib/vtls/sectransp.c',
 ]
 
 CURL_SOURCES_LINUX = [
-    # vauth
-    'lib/vauth/spnego_gssapi.c',
-    'lib/vauth/krb5_gssapi.c',
+	# vauth
+	'lib/vauth/spnego_gssapi.c',
+	'lib/vauth/krb5_gssapi.c',
 
-    # vtls
-    'lib/vtls/openssl.c',
+	# vtls
+	'lib/vtls/openssl.c',
 ]
 
 CURL_SOURCES_ANDROID = CURL_SOURCES_LINUX
 
 def configure(conf):
-    src_dir = conf.path.abspath()
-    config_map = {
-        'win32':   'curl_config_win32.h',
-        'darwin':  'curl_config_darwin.h',
-        'android': 'curl_config_android.h',
-    }
-    src_file = config_map.get(conf.env.DEST_OS, 'curl_config_linux.h')
-    
-    shutil.copy(
-        os.path.join(src_dir, 'lib', src_file),
-        os.path.join(src_dir, 'lib', 'curl_config.h')
-    )
+	src_dir = conf.path.abspath()
+	config_map = {
+		'win32':   'curl_config_win32.h',
+		'darwin':  'curl_config_darwin.h',
+		'android': 'curl_config_android.h',
+	}
+	src_file = config_map.get(conf.env.DEST_OS, 'curl_config_linux.h')
+	
+	shutil.copy(
+		os.path.join(src_dir, 'lib', src_file),
+		os.path.join(src_dir, 'lib', 'curl_config.h')
+	)
 
 def build(bld):
-    curl_dir = bld.path.abspath()
+	curl_dir = bld.path.abspath()
 
-    sources = list(CURL_SOURCES)
+	sources = list(CURL_SOURCES)
 
-    defines = [
-        'BUILDING_LIBCURL',
-        'CURL_STATICLIB',
-        'CURL_DISABLE_LDAP',
-        'CURL_DISABLE_LDAPS',
-        'CURL_DISABLE_RTMP',
-        'CURL_DISABLE_DICT',
-        'USE_THREADS_POSIX',
-        'HAVE_CONFIG_H',
-    ]
+	defines = [
+		'BUILDING_LIBCURL',
+		'CURL_STATICLIB',
+		'CURL_DISABLE_LDAP',
+		'CURL_DISABLE_LDAPS',
+		'CURL_DISABLE_RTMP',
+		'CURL_DISABLE_DICT',
+		'USE_THREADS_POSIX',
+		'HAVE_CONFIG_H',
+	]
 
-    if bld.env.DEST_OS == 'win32':
-        sources += CURL_SOURCES_WIN32
-        defines += [
-            'USE_SCHANNEL',
-            'USE_WINDOWS_SSPI',
-            'USE_WIN32_CRYPTO',
-            'USE_THREADS_WIN32',
-        ]
-        defines.remove('USE_THREADS_POSIX')
-    elif bld.env.DEST_OS == 'darwin':
-        sources += CURL_SOURCES_DARWIN
-        defines += ['USE_SECTRANSP']
-    elif bld.env.DEST_OS == 'android':
-        sources += CURL_SOURCES_ANDROID
-        defines += ['USE_OPENSSL']
-    else:
-        sources += CURL_SOURCES_LINUX
-        defines += ['USE_OPENSSL']
+	cflags = []
 
-    bld.stlib(
-        source          = sources,
-        target          = 'curl',
-        includes        = [
-            os.path.join(curl_dir, 'include'),
-            os.path.join(curl_dir, 'lib'),
-        ],
-        defines         = defines,
-        export_includes = [os.path.join(curl_dir, 'include')],
-        export_defines  = ['CURL_STATICLIB'],
-        uselib_store    = 'CURL',
-        use             = 'ZLIB',
-    )
+	if bld.env.DEST_OS == 'win32':
+		sources += CURL_SOURCES_WIN32
+		defines += [
+			'USE_SCHANNEL',
+			'USE_WINDOWS_SSPI',
+			'USE_WIN32_CRYPTO',
+			'USE_THREADS_WIN32',
+		]
+		defines.remove('USE_THREADS_POSIX')
+
+		cflags += ['/TC', '/wd4005', '/wd4244', '/wd4267']
+	elif bld.env.DEST_OS == 'darwin':
+		sources += CURL_SOURCES_DARWIN
+		defines += ['USE_SECTRANSP']
+	elif bld.env.DEST_OS == 'android':
+		sources += CURL_SOURCES_ANDROID
+		defines += ['USE_OPENSSL']
+	else:
+		sources += CURL_SOURCES_LINUX
+		defines += ['USE_OPENSSL']
+
+	bld.stlib(
+		source          = sources,
+		target          = 'curl',
+		includes        = [
+			os.path.join(curl_dir, 'include'),
+			os.path.join(curl_dir, 'lib'),
+		],
+		defines         = defines,
+		cflags          = cflags,
+		export_includes = [os.path.join(curl_dir, 'include')],
+		export_defines  = ['CURL_STATICLIB'],
+		uselib_store    = 'CURL',
+		use             = 'ZLIB',
+	)
