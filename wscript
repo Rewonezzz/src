@@ -539,6 +539,7 @@ def configure(conf):
 			'-I'+os.path.abspath('.')+'/thirdparty/openal-soft/include/',
 			'-I'+os.path.abspath('.')+'/thirdparty/fontconfig',
 			'-I'+os.path.abspath('.')+'/thirdparty/freetype/include',
+			'-I'+os.path.abspath('.')+'/thirdparty/openssl/include',
 			'-llog',
 			'-lz'
 		]
