@@ -421,8 +421,10 @@ def check_deps(conf):
 				conf.check_cfg(package='libpng', uselib_store='PNG', args=['--cflags', '--libs'])
 				#conf.check_cfg(package='libcurl', uselib_store='CURL', args=['--cflags', '--libs'])
 
-			conf.check(lib='crypto', uselib_store='CRYPTO', args=['--cflags', '--libs'])
-			conf.check(lib='ssl', uselib_store='SSL', args=['--cflags', '--libs'])
+			if conf.env.DEST_OS != 'darwin':
+				conf.check(lib='crypto', uselib_store='CRYPTO', args=['--cflags', '--libs'])
+				conf.check(lib='ssl', uselib_store='SSL', args=['--cflags', '--libs'])
+
 			conf.check_cfg(package='zlib', uselib_store='ZLIB', args=['--cflags', '--libs'])
 
 			if conf.options.OPUS:
