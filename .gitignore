@@ -3,7 +3,6 @@
 *.vpc_crc
 *.vpc.*
 *.project
-*obj_*
 .waf*
 .lock-waf*
 __pycache__
@@ -54,3 +53,9 @@ opus/
 
 # I refuse to update the readme once again
 *.md
+
+!thirdparty/openssl
+!thirdparty/openssl/include
+!thirdparty/openssl/include/obj_mac.h
+!openssl/include
+!openssl/include/obj_mac.h
