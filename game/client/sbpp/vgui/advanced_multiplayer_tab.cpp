@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include "advanced_multiplayer_tab.h"
 #include "advanced_options.h"
+#include "animation.h"
 #include <vgui/ISurface.h>
 #include "filesystem.h"
 #include "fmtstr.h"
@@ -17,9 +18,11 @@
 
 using namespace vgui;
 
-static bool		   s_bPopulatingNameField = false;
-static const char *s_sPlusSettingsCfg = "cfg/plus_settings.cfg";
-static int		   s_iLastHandIndex = -1;
+static bool s_bPopulatingNameField = false;
+static int	s_iLastHandIndex = -1;
+
+#define DEFAULT_PM "models/player/kleiner.mdl"
+#define CFG_PLUS "cfg/plus_settings.cfg"
 
 static void SaveSettingsToFile( const char *playerName, const char *handModel )
 {
@@ -28,7 +31,7 @@ static void SaveSettingsToFile( const char *playerName, const char *handModel )
 	kv->SetString( "PlayerName", playerName ? playerName : "" );
 	kv->SetString( "HandModel", handModel ? handModel : "" );
 
-	kv->SaveToFile( g_pFullFileSystem, s_sPlusSettingsCfg );
+	kv->SaveToFile( g_pFullFileSystem, CFG_PLUS );
 	kv->deleteThis();
 }
 
@@ -38,7 +41,7 @@ static void LoadSettingsFromFile( CUtlString &outPlayerName, CUtlString &outHand
 	outHandModel = "";
 
 	KeyValues *kv = new KeyValues( "PlusSettings" );
-	if ( kv->LoadFromFile( g_pFullFileSystem, s_sPlusSettingsCfg ) )
+	if ( kv->LoadFromFile( g_pFullFileSystem, CFG_PLUS ) )
 	{
 		const char *name = kv->GetString( "PlayerName", "" );
 		const char *hand = kv->GetString( "HandModel", "" );
@@ -49,7 +52,7 @@ static void LoadSettingsFromFile( CUtlString &outPlayerName, CUtlString &outHand
 	kv->deleteThis();
 }
 
-static bool LoadPMCache( std::vector<std::string> &out )
+static bool LoadPMCache( std::vector< std::string > &out )
 {
 	out.clear();
 	FileHandle_t fh = g_pFullFileSystem->Open( "cache/pm_cache.txt", "r" );
@@ -57,10 +60,10 @@ static bool LoadPMCache( std::vector<std::string> &out )
 		return false;
 
 	char line[MAX_PATH];
-	while ( g_pFullFileSystem->ReadLine( line, sizeof(line), fh ) )
+	while ( g_pFullFileSystem->ReadLine( line, sizeof( line ), fh ) )
 	{
-		int len = Q_strlen(line);
-		while ( len > 0 && (line[len-1] == '\n' || line[len-1] == '\r') )
+		int len = Q_strlen( line );
+		while ( len > 0 && ( line[len - 1] == '\n' || line[len - 1] == '\r' ) )
 			line[--len] = '\0';
 		if ( len > 0 )
 			out.push_back( line );
@@ -69,10 +72,11 @@ static bool LoadPMCache( std::vector<std::string> &out )
 	return !out.empty();
 }
 
-static void SavePMCache( const std::vector<std::string> &paths )
+static void SavePMCache( const std::vector< std::string > &paths )
 {
 	FileHandle_t fh = g_pFullFileSystem->Open( "cache/pm_cache.txt", "w" );
-	if ( fh == FILESYSTEM_INVALID_HANDLE ) return;
+	if ( fh == FILESYSTEM_INVALID_HANDLE )
+		return;
 	for ( auto &p : paths )
 	{
 		g_pFullFileSystem->Write( p.c_str(), p.size(), fh );
@@ -249,71 +253,123 @@ static void ApplyColorToConvarsByTarget( int target, int r, int g, int b )
 {
 	if ( target == CAdvancedOptionsMultiplayer::COLORTARGET_PLAYER )
 	{
-		ConVar *cr = cvar->FindVar( "playercolor_r" );
-		ConVar *cg = cvar->FindVar( "playercolor_g" );
-		ConVar *cb = cvar->FindVar( "playercolor_b" );
-		if ( cr )
-			cr->SetValue( r );
-		if ( cg )
-			cg->SetValue( g );
-		if ( cb )
-			cb->SetValue( b );
+		static ConVarRef playercolor_r( "playercolor_r" );
+		static ConVarRef playercolor_g( "playercolor_g" );
+		static ConVarRef playercolor_b( "playercolor_b" );
+
+		if ( playercolor_r.IsValid() )
+			playercolor_r.SetValue( r );
+
+		if ( playercolor_g.IsValid() )
+			playercolor_g.SetValue( g );
+
+		if ( playercolor_b.IsValid() )
+			playercolor_b.SetValue( b );
 	}
 	else if ( target == CAdvancedOptionsMultiplayer::COLORTARGET_WEAPON )
 	{
-		ConVar *cr = cvar->FindVar( "physgun_r" );
-		ConVar *cg = cvar->FindVar( "physgun_g" );
-		ConVar *cb = cvar->FindVar( "physgun_b" );
-		if ( cr )
-			cr->SetValue( r );
-		if ( cg )
-			cg->SetValue( g );
-		if ( cb )
-			cb->SetValue( b );
+		static ConVarRef physgun_r( "physgun_r" );
+		static ConVarRef physgun_g( "physgun_g" );
+		static ConVarRef physgun_b( "physgun_b" );
+
+		if ( physgun_r.IsValid() )
+			physgun_r.SetValue( r );
+
+		if ( physgun_g.IsValid() )
+			physgun_g.SetValue( g );
+
+		if ( physgun_b.IsValid() )
+			physgun_b.SetValue( b );
 	}
 }
 
 CMDLPanelAdv::CMDLPanelAdv( vgui::Panel *pParent, const char *pName ) : CMDLPanel( pParent, pName )
 {
+	SetSkin( 0 );
+	SetLookAtCamera( true );
+	SetGroundGrid( true );
+
+	vgui::ivgui()->AddTickSignal( GetVPanel(), 10 );
+}
+
+void CMDLPanelAdv::SetMDL( const char *pMDLName, void *pProxyData )
+{
+	if ( !pMDLName || !*pMDLName )
+		return;
+
+	MDLHandle_t h = mdlcache->FindMDL( pMDLName );
+	if ( h == MDLHANDLE_INVALID )
+		return;
+
+	studiohdr_t *pHdr = mdlcache->GetStudioHdr( h );
+	if ( !pHdr )
+	{
+		mdlcache->Release( h );
+		return;
+	}
+
+	mdlcache->GetVirtualModel( h );
+
+	BaseClass::SetMDL( pMDLName, pProxyData );
+
+	PlayActivity( ACT_HL2MP_IDLE ); // HACK!!
+
+	m_RootMDL.m_flCycleStartTime = Plat_FloatTime();
+
+	mdlcache->Release( h );
+}
+
+void CMDLPanelAdv::PrePaint3D( IMatRenderContext *pRenderContext )
+{
+	//BaseClass::PrePaint3D( pRenderContext );
+
+	StudioRenderConfig_t cfg;
+	g_pStudioRender->GetCurrentConfig( cfg );
+
+	cfg.drawEntities = 1;
+	cfg.bTeeth = true;
+	cfg.bEyes = true;
+	cfg.bFlex = true;
+	cfg.bEyeMove = true;
+	cfg.bWireframe = false;
+	cfg.bDrawNormals = false;
+	cfg.bDrawTangentFrame = false;
+	cfg.bNoHardware = false;
+	cfg.bNoSoftware = false;
+
+	g_pStudioRender->UpdateConfig( cfg );
+}
+
+void CMDLPanelAdv::OnTick()
+{
+	BaseClass::OnTick();
+
+	static float s_flBaseRealTime = Plat_FloatTime();
+	float		 flElapsed = Plat_FloatTime() - s_flBaseRealTime;
+
+	m_RootMDL.m_flCycleStartTime = gpGlobals->curtime - flElapsed;
+
+	Repaint();
 }
 
 void CMDLPanelAdv::PlayActivity( Activity activity )
 {
-	MDLHandle_t h = m_RootMDL.m_MDL.GetMDL();
-	if ( h == MDLHANDLE_INVALID )
+	if ( m_RootMDL.m_MDL.GetMDL() == MDLHANDLE_INVALID )
 		return;
 
-	mdlcache->BeginLock();
-		
-	studiohdr_t *pStudioHdr = mdlcache->GetStudioHdr( h );
-	if ( !pStudioHdr )
-	{
-		mdlcache->EndLock();
+	studiohdr_t *pHdr = mdlcache->GetStudioHdr( m_RootMDL.m_MDL.GetMDL() );
+	if ( !pHdr )
 		return;
-	}
 
-	CStudioHdr hdr( pStudioHdr, mdlcache );
+	CStudioHdr studioHdr( pHdr, mdlcache );
 
-	int bestSeq = -1;
-	int numSeq = hdr.GetNumSeq();
+	int iSeq = SelectWeightedSequence( &studioHdr, activity );
+	if ( iSeq < 0 )
+		iSeq = 0;
 
-	for ( int i = 0; i < numSeq; i++ )
-	{
-		const mstudioseqdesc_t &seq = hdr.pSeqdesc( i );
+	SetSequence( iSeq, true );
 
-		if ( seq.activity == activity )
-		{
-			bestSeq = i;
-			break;
-		}
-	}
-
-	mdlcache->EndLock();
-
-	if ( bestSeq >= 0 )
-		SetSequence( bestSeq, true );
-	else
-		SetSequence( 0, true );
+	m_RootMDL.m_flCycleStartTime = Plat_FloatTime();
 }
 
 CAdvancedOptionsMultiplayer::CAdvancedOptionsMultiplayer( Panel *parent, const char *panelName ) :
@@ -323,6 +379,8 @@ CAdvancedOptionsMultiplayer::CAdvancedOptionsMultiplayer( Panel *parent, const c
 	m_pPlayerForward( nullptr ),
 	m_pWeaponForward( nullptr )
 {
+	SetProportional( true );
+
 	m_pNameLabel = new Label( this, "NameLabel", "Player Name:" );
 	m_pNameEntry = new TextEntry( this, "NameEntry" );
 	m_pPMModel = new CMDLPanelAdv( this, "PMModel" );
@@ -379,7 +437,134 @@ CAdvancedOptionsMultiplayer::CAdvancedOptionsMultiplayer( Panel *parent, const c
 		m_WeaponPresetBtns.AddToTail( btn );
 	}
 
+	m_bFirstInit = false;
+
 	vgui::ivgui()->AddTickSignal( GetVPanel(), 100 );
+}
+
+void CAdvancedOptionsMultiplayer::ApplySchemeSettings( vgui::IScheme *pScheme )
+{
+	BaseClass::ApplySchemeSettings( pScheme );
+
+    if ( m_bFirstInit )
+        return;
+
+    m_bFirstInit = true;
+
+	PopulatePlayerModels();
+
+	if ( m_pPlayerColorBtn )
+	{
+		static ConVarRef playercolor_r( "playercolor_r" );
+		static ConVarRef playercolor_g( "playercolor_g" );
+		static ConVarRef playercolor_b( "playercolor_b" );
+
+		int pr = playercolor_r.IsValid() ? playercolor_r.GetInt() : 128;
+		int pg = playercolor_g.IsValid() ? playercolor_g.GetInt() : 128;
+		int pb = playercolor_b.IsValid() ? playercolor_b.GetInt() : 128;
+
+		m_pPlayerColorBtn->SetColor( pr, pg, pb, 255 );
+	}
+
+	if ( m_pWeaponColorBtn )
+	{
+		static ConVarRef physgun_r( "physgun_r" );
+		static ConVarRef physgun_g( "physgun_g" );
+		static ConVarRef physgun_b( "physgun_b" );
+
+		int wr = physgun_r.IsValid() ? physgun_r.GetInt() : 128;
+		int wg = physgun_g.IsValid() ? physgun_g.GetInt() : 128;
+		int wb = physgun_b.IsValid() ? physgun_b.GetInt() : 128;
+
+		m_pWeaponColorBtn->SetColor( wr, wg, wb, 255 );
+	}
+
+	m_pHandModelSelector->DeleteAllItems();
+	m_HandModels.clear();
+
+	LoadHandModelsFromLua( m_HandModels );
+
+	if ( m_HandModels.empty() )
+	{
+		struct HandModelEntry
+		{
+			const char *key;
+			const char *path;
+			const char *name;
+			int			skin;
+		};
+		HandModelEntry models[] = { { "citizen", "models/weapons/c_arms_citizen.mdl", "Citizen", 0 } };
+
+		for ( int i = 0; i < ARRAYSIZE( models ); ++i )
+		{
+			HandModelInfo info;
+			info.key = models[i].key;
+			info.model = models[i].path;
+			info.skin = models[i].skin;
+			info.name = models[i].name;
+			m_HandModels.push_back( info );
+		}
+	}
+
+	for ( size_t i = 0; i < m_HandModels.size(); ++i )
+	{
+		m_pHandModelSelector->AddItem( m_HandModels[i].name.c_str(), nullptr );
+	}
+
+	CUtlString dummyName, savedHandKey;
+	LoadSettingsFromFile( dummyName, savedHandKey );
+
+	int selIndex = 0;
+	if ( savedHandKey.Length() > 0 )
+	{
+		for ( size_t i = 0; i < m_HandModels.size(); ++i )
+		{
+			if ( Q_stricmp( savedHandKey.Get(), m_HandModels[i].key.c_str() ) == 0 )
+			{
+				selIndex = (int)i;
+				break;
+			}
+		}
+	}
+	else
+	{
+		static ConVarRef c_handmodel( "c_handmodel" );
+		const char		*pHandModel = c_handmodel.IsValid() ? c_handmodel.GetString() : "citizen";
+
+		for ( size_t i = 0; i < m_HandModels.size(); ++i )
+		{
+			if ( Q_stricmp( pHandModel, m_HandModels[i].key.c_str() ) == 0 )
+			{
+				selIndex = (int)i;
+				break;
+			}
+		}
+	}
+
+	m_pHandModelSelector->ActivateItem( selIndex );
+	s_iLastHandIndex = selIndex;
+
+	// model
+	m_pPMModel->SetGroundGrid( true );
+	//m_pPMModel->SetBackgroundColor( Color( 30, 30, 30, 255 ) );
+
+	s_bPopulatingNameField = true;
+	CUtlString fileLoadedName, fileLoadedHand;
+	LoadSettingsFromFile( fileLoadedName, fileLoadedHand );
+
+	if ( fileLoadedName.Length() > 0 )
+		m_pNameEntry->SetText( fileLoadedName.Get() );
+	else
+	{
+		static ConVarRef name( "name" );
+
+		if ( name.IsValid() && name.GetString() )
+			m_pNameEntry->SetText( name.GetString() );
+		else
+			m_pNameEntry->SetText( "" );
+	}
+
+	s_bPopulatingNameField = false;
 }
 
 void CAdvancedOptionsMultiplayer::PopulatePlayerModels()
@@ -393,11 +578,7 @@ void CAdvancedOptionsMultiplayer::PopulatePlayerModels()
 	m_PMPaths.clear();
 	m_pPMSelector->DeleteAllItems();
 
-	auto shouldExclude = []( const char *filename ) -> bool
-	{
-		return V_stristr( filename, ".phy.mdl" ) != nullptr
-			|| V_stristr( filename, "_anim" ) != nullptr;
-	};
+	auto shouldExclude = []( const char *filename ) -> bool { return V_stristr( filename, ".phy.mdl" ) != nullptr || V_stristr( filename, "_anim" ) != nullptr; };
 
 	if ( !LoadPMCache( m_PMPaths ) )
 	{
@@ -444,10 +625,9 @@ void CAdvancedOptionsMultiplayer::PopulatePlayerModels()
 	for ( auto &path : m_PMPaths )
 		m_pPMSelector->AddItem( path.c_str(), nullptr );
 
-	ConVar	   *pm = cvar->FindVar( "cl_playermodel" );
-	const char *defaultModel = "models/player/kleiner.mdl";
+	static ConVarRef cl_playermodel( "cl_playermodel" );
 
-	const char *playermodel = ( pm && pm->GetString() && pm->GetString()[0] ) ? pm->GetString() : defaultModel;
+	const char *playermodel = ( cl_playermodel.IsValid() && cl_playermodel.GetString() ) ? cl_playermodel.GetString() : DEFAULT_PM;
 
 	if ( !m_PMPaths.empty() )
 	{
@@ -513,7 +693,7 @@ void CAdvancedOptionsMultiplayer::PopulatePlayerModels()
 		{
 			for ( int i = 0; i < (int)m_PMPaths.size(); ++i )
 			{
-				if ( !Q_stricmp( m_PMPaths[i].c_str(), defaultModel ) )
+				if ( !Q_stricmp( m_PMPaths[i].c_str(), DEFAULT_PM ) )
 				{
 					foundIndex = i;
 					break;
@@ -531,9 +711,6 @@ void CAdvancedOptionsMultiplayer::PopulatePlayerModels()
 		{
 			m_pPMModel->SetMDL( m_PMPaths[foundIndex].c_str() );
 			m_pPMModel->LookAtMDL();
-
-			// this is a sort-of benchmark to see if model has anims
-			m_pPMModel->PlayActivity( ACT_HL2MP_IDLE );
 		}
 	}
 }
@@ -579,9 +756,9 @@ void CAdvancedOptionsMultiplayer::OnTextChanged( KeyValues *pKeyValues )
 	LoadSettingsFromFile( dummyHand, currentHand );
 	SaveSettingsToFile( currentName.Get(), currentHand.Get() );
 
-	ConVar *nameVar = cvar->FindVar( "name" );
-	if ( nameVar )
-		nameVar->SetValue( buf );
+	static ConVarRef name( "name" );
+	if ( name.IsValid() )
+		name.SetValue( buf );
 
 	char cmd[MAX_PATH];
 	Q_snprintf( cmd, sizeof( cmd ), "name \"%s\"", buf );
@@ -598,21 +775,15 @@ void CAdvancedOptionsMultiplayer::OnTick()
 		m_iLastPMIndex = sel;
 		const char *modelPath = m_PMPaths[sel].c_str();
 
-		ConVar *pm = cvar->FindVar( "cl_playermodel" );
-		if ( pm )
-		{
-			pm->SetValue( modelPath );
-			m_pszCurrentPM = modelPath;
-		}
-
 		if ( m_pPMModel )
 		{
 			m_pPMModel->SetMDL( modelPath );
 			m_pPMModel->LookAtMDL();
-
-			// this is a sort-of benchmark to see if model has anims
-			m_pPMModel->PlayActivity( ACT_HL2MP_IDLE );
 		}
+
+		char cmd[MAX_PATH * 2];
+		Q_snprintf( cmd, sizeof( cmd ), "cl_playermodel \"%s\"\n", modelPath );
+		engine->ClientCmd_Unrestricted( cmd );
 	}
 
 	sel = m_pHandModelSelector->GetActiveItem();
@@ -678,202 +849,120 @@ void CAdvancedOptionsMultiplayer::PerformLayout()
 {
 	BaseClass::PerformLayout();
 
-	PopulatePlayerModels();
+	int w = GetWide();
+	int h = GetTall();
 
-	m_pNameLabel->SetBounds( 12, 12, 100, 30 );
-	m_pNameEntry->SetBounds( 97, 12, 100, 30 );
+	int marginX = MAX( static_cast< int >( w * 0.04f ), 16 );
+	int marginY = MAX( static_cast< int >( h * 0.03f ), 12 );
+	int spacingY = MAX( static_cast< int >( h * 0.015f ), 6 );
+	int spacingX = MAX( static_cast< int >( w * 0.015f ), 6 );
 
-	ConVar *pm = cvar->FindVar( "cl_playermodel" );
-	m_pszCurrentPM = pm->GetString();
+	int controlHeight = MAX( static_cast< int >( h * 0.06f ), 24 );
 
-	int modelX = 10;
-	int modelY = 50;
-	int modelW = 250;
-	int modelH = 250;
+	int leftColumnX = marginX;
+	int leftColumnWidth = static_cast< int >( w * 0.45f );
+	leftColumnWidth = MAX( leftColumnWidth, 220 );
 
-	m_pPMModel->SetBounds( modelX, modelY, modelW, modelH );
+	int separatorX = leftColumnX + leftColumnWidth + marginX;
 
-	int comboX = modelX;
-	int comboY = modelY + modelH + 10;
-	int comboW = modelW;
-	int comboH = 25;
+	int rightColumnX = separatorX + marginX;
+	int rightColumnWidth = w - rightColumnX - marginX;
+	rightColumnWidth = MAX( rightColumnWidth, 180 );
 
-	//m_pPMSelector->SetBounds( comboX, comboY, comboW, comboH );
+	int yLeft = marginY;
 
-	int btnY = comboY + comboH + 15;
-	int spacing = 8;
-	int btnW = ( comboW - spacing ) / 2;
-	int btnH = 30;
+	int nameLabelWidth = MAX( static_cast< int >( leftColumnWidth * 0.35f ), 90 );
+	int nameEntryWidth = leftColumnWidth - nameLabelWidth - spacingX;
 
-	m_pPlayerColorBtn->SetBounds( comboX, btnY, btnW, btnH );
-	m_pWeaponColorBtn->SetBounds( comboX + btnW + spacing, btnY, btnW, btnH );
+	m_pNameLabel->SetBounds( leftColumnX, yLeft, nameLabelWidth, controlHeight );
+	m_pNameEntry->SetBounds( leftColumnX + nameLabelWidth + spacingX, yLeft, nameEntryWidth, controlHeight );
 
-	m_pPMSelector->SetBounds( comboX, comboY, comboW - 60, comboH );
-	m_pRefreshPMBtn->SetBounds( comboX + comboW - 55, comboY, 55, comboH );
+	yLeft += controlHeight + spacingY * 2;
 
-	if ( m_pPlayerColorBtn )
-	{
-		int		pr = 128, pg = 128, pb = 128;
-		ConVar *cr = cvar->FindVar( "playercolor_r" );
-		ConVar *cg = cvar->FindVar( "playercolor_g" );
-		ConVar *cb = cvar->FindVar( "playercolor_b" );
-		if ( cr )
-			pr = cr->GetInt();
-		if ( cg )
-			pg = cg->GetInt();
-		if ( cb )
-			pb = cb->GetInt();
-		m_pPlayerColorBtn->SetColor( pr, pg, pb, 255 );
-	}
+	int modelSize = MIN( leftColumnWidth, static_cast< int >( h * 0.35f ) );
+	modelSize = clamp( modelSize, 140, 280 );
 
-	if ( m_pWeaponColorBtn )
-	{
-		int		wr = 128, wg = 128, wb = 128;
-		ConVar *cr = cvar->FindVar( "physgun_r" );
-		ConVar *cg = cvar->FindVar( "physgun_g" );
-		ConVar *cb = cvar->FindVar( "physgun_b" );
-		if ( cr )
-			wr = cr->GetInt();
-		if ( cg )
-			wg = cg->GetInt();
-		if ( cb )
-			wb = cb->GetInt();
-		m_pWeaponColorBtn->SetColor( wr, wg, wb, 255 );
-	}
+	int modelX = leftColumnX + ( leftColumnWidth - modelSize ) / 2;
+	m_pPMModel->SetBounds( modelX, yLeft, modelSize, modelSize );
 
-	int labelSpacing = 4;
-	int labelHeight = 16;
-	int labelY = btnY + btnH + labelSpacing;
+	yLeft += modelSize + spacingY;
 
-	m_pPlayerColorLabel->SetBounds( comboX, labelY, btnW, labelHeight );
+	int refreshBtnWidth = MAX( static_cast< int >( leftColumnWidth * 0.25f ), 70 );
+	int comboWidth = leftColumnWidth - refreshBtnWidth - spacingX;
+	int comboHeight = controlHeight;
 
-	m_pWeaponColorLabel->SetBounds( comboX + btnW + spacing, labelY, btnW, labelHeight );
+	m_pPMSelector->SetBounds( leftColumnX, yLeft, comboWidth, comboHeight );
+	m_pRefreshPMBtn->SetBounds( leftColumnX + comboWidth + spacingX, yLeft, refreshBtnWidth, comboHeight );
 
-	m_pVerticalSeparator->SetBounds( modelX + modelW + 15, modelY, 2, modelH );
+	yLeft += comboHeight + spacingY;
 
-	int presetAreaX = modelX + modelW + 30;
-	int presetStartY = modelY - 20;
-	int presetBtnW = 60;
-	int presetBtnH = 24;
-	int presetSpacing = 16;
-	int presetLabelHeight = 18;
+	int colorLabelHeight = static_cast< int >( controlHeight * 0.55f );
+	colorLabelHeight = MAX( colorLabelHeight, 16 );
+
+	m_pPlayerColorLabel->SetBounds( leftColumnX, yLeft, leftColumnWidth, colorLabelHeight );
+	yLeft += colorLabelHeight + spacingY / 2;
+
+	m_pPlayerColorBtn->SetBounds( leftColumnX, yLeft, leftColumnWidth, controlHeight );
+	yLeft += controlHeight + spacingY;
+
+	m_pWeaponColorLabel->SetBounds( leftColumnX, yLeft, leftColumnWidth, colorLabelHeight );
+	yLeft += colorLabelHeight + spacingY / 2;
+
+	m_pWeaponColorBtn->SetBounds( leftColumnX, yLeft, leftColumnWidth, controlHeight );
+	yLeft += controlHeight + spacingY;
+
+	m_pHandModelSelector->SetBounds( leftColumnX, yLeft, leftColumnWidth, controlHeight );
+
+	int sepTop = marginY;
+	int sepBottom = h - marginY;
+	m_pVerticalSeparator->SetBounds( separatorX, sepTop, 2, sepBottom - sepTop );
+
+	int yRight = marginY;
+
+	int presetLabelHeight = static_cast< int >( controlHeight * 0.7f );
+	presetLabelHeight = MAX( presetLabelHeight, 18 );
+
 	int columns = 2;
+	int presetSpacing = MAX( static_cast< int >( w * 0.012f ), 6 );
+	int presetBtnW = ( rightColumnWidth - ( columns - 1 ) * presetSpacing ) / columns;
+	presetBtnW = MAX( presetBtnW, 60 );
 
-	m_pPlayerPresetsLabel->SetBounds( presetAreaX, presetStartY - presetLabelHeight - 4, columns * presetBtnW + ( columns - 1 ) * presetSpacing, presetLabelHeight );
+	int presetBtnH = MAX( static_cast< int >( h * 0.05f ), 24 );
+
+	m_pPlayerPresetsLabel->SetBounds( rightColumnX, yRight, rightColumnWidth, presetLabelHeight );
+	yRight += presetLabelHeight + spacingY;
 
 	int playerRows = ( m_PlayerPresetBtns.Count() + columns - 1 ) / columns;
 	for ( int i = 0; i < m_PlayerPresetBtns.Count(); i++ )
 	{
 		int row = i / columns;
 		int col = i % columns;
-		m_PlayerPresetBtns[i]->SetBounds( presetAreaX + col * ( presetBtnW + presetSpacing ), presetStartY + row * ( presetBtnH + presetSpacing ), presetBtnW, presetBtnH );
+
+		int px = rightColumnX + col * ( presetBtnW + presetSpacing );
+		int py = yRight + row * ( presetBtnH + presetSpacing );
+
+		m_PlayerPresetBtns[i]->SetBounds( px, py, presetBtnW, presetBtnH );
 	}
 
-	int playerPresetsEndY = presetStartY + playerRows * ( presetBtnH + presetSpacing );
-	int sepY = playerPresetsEndY + 15;
-	m_pHorizontalSeparator->SetBounds( presetAreaX, sepY, columns * presetBtnW + ( columns - 1 ) * presetSpacing, 2 );
+	yRight += playerRows * ( presetBtnH + presetSpacing ) + spacingY;
 
-	int weaponPresetsStartY = sepY + 20;
-	m_pWeaponPresetsLabel->SetBounds( presetAreaX, weaponPresetsStartY - presetLabelHeight - 4, columns * presetBtnW + ( columns - 1 ) * presetSpacing, presetLabelHeight );
+	m_pHorizontalSeparator->SetBounds( rightColumnX, yRight, rightColumnWidth, 2 );
+	yRight += spacingY * 2;
+
+	m_pWeaponPresetsLabel->SetBounds( rightColumnX, yRight, rightColumnWidth, presetLabelHeight );
+	yRight += presetLabelHeight + spacingY;
 
 	int weaponRows = ( m_WeaponPresetBtns.Count() + columns - 1 ) / columns;
 	for ( int i = 0; i < m_WeaponPresetBtns.Count(); i++ )
 	{
 		int row = i / columns;
 		int col = i % columns;
-		m_WeaponPresetBtns[i]->SetBounds( presetAreaX + col * ( presetBtnW + presetSpacing ), weaponPresetsStartY + row * ( presetBtnH + presetSpacing ), presetBtnW, presetBtnH );
+
+		int px = rightColumnX + col * ( presetBtnW + presetSpacing );
+		int py = yRight + row * ( presetBtnH + presetSpacing );
+
+		m_WeaponPresetBtns[i]->SetBounds( px, py, presetBtnW, presetBtnH );
 	}
-
-	m_pHandModelSelector->DeleteAllItems();
-	m_HandModels.clear();
-
-	LoadHandModelsFromLua( m_HandModels );
-
-	if ( m_HandModels.empty() )
-	{
-		struct HandModelEntry
-		{
-			const char *key;
-			const char *path;
-			const char *name;
-			int			skin;
-		};
-		HandModelEntry models[] = { { "citizen", "models/weapons/c_arms_citizen.mdl", "Citizen", 0 } };
-
-		for ( int i = 0; i < ARRAYSIZE( models ); ++i )
-		{
-			HandModelInfo info;
-			info.key = models[i].key;
-			info.model = models[i].path;
-			info.skin = models[i].skin;
-			info.name = models[i].name;
-			m_HandModels.push_back( info );
-		}
-	}
-
-	for ( size_t i = 0; i < m_HandModels.size(); ++i )
-	{
-		m_pHandModelSelector->AddItem( m_HandModels[i].name.c_str(), nullptr );
-	}
-
-	CUtlString dummyName, savedHandKey;
-	LoadSettingsFromFile( dummyName, savedHandKey );
-
-	int selIndex = 0;
-	if ( savedHandKey.Length() > 0 )
-	{
-		for ( size_t i = 0; i < m_HandModels.size(); ++i )
-		{
-			if ( Q_stricmp( savedHandKey.Get(), m_HandModels[i].key.c_str() ) == 0 )
-			{
-				selIndex = (int)i;
-				break;
-			}
-		}
-	}
-	else
-	{
-		const char *c_handmodel = cvar->FindVar( "c_handmodel" )->GetString();
-		for ( size_t i = 0; i < m_HandModels.size(); ++i )
-		{
-			if ( Q_stricmp( c_handmodel, m_HandModels[i].key.c_str() ) == 0 )
-			{
-				selIndex = (int)i;
-				break;
-			}
-		}
-	}
-
-	m_pHandModelSelector->ActivateItem( selIndex );
-	s_iLastHandIndex = selIndex;
-
-	int handX = 10;
-	int handY = comboY + comboH + 80;
-	int handW = 250;
-	int handH = 25;
-	m_pHandModelSelector->SetBounds( handX, handY, handW, handH );
-
-	// model
-	m_pPMModel->SetGroundGrid( true );
-
-	s_bPopulatingNameField = true;
-	CUtlString fileLoadedName, fileLoadedHand;
-	LoadSettingsFromFile( fileLoadedName, fileLoadedHand );
-
-	if ( fileLoadedName.Length() > 0 )
-	{
-		m_pNameEntry->SetText( fileLoadedName.Get() );
-	}
-	else
-	{
-		ConVar *nameVar = cvar->FindVar( "name" );
-		if ( nameVar && nameVar->GetString() && nameVar->GetString()[0] != '\0' )
-			m_pNameEntry->SetText( nameVar->GetString() );
-		else
-			m_pNameEntry->SetText( "" );
-	}
-
-	s_bPopulatingNameField = false;
 }
 
 void CAdvancedOptionsMultiplayer::OnColorPicked( KeyValues *data )

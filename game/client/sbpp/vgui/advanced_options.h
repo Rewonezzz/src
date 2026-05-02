@@ -39,6 +39,8 @@ protected:
 	virtual void OnTick();
 	virtual void OnCommand( const char *pcCommand );
 
+	virtual void PerformLayout();
+
 	virtual void OnClose();
 
 public:

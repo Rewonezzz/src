@@ -13,6 +13,8 @@
 
 CAdvancedOptionsVisuals::CAdvancedOptionsVisuals( Panel *parent, const char *panelName ) : BaseClass( parent, panelName )
 {
+	SetProportional( true );
+
 	m_pFPSCheckbox = new vgui::CheckButton( this, "FPSCheckbox", "Show FPS" );
 	m_pFPSCheckbox->AddActionSignalTarget( this );
 	m_pFPSCheckbox->SetCommand( "FPSCheckboxToggled" );
@@ -30,20 +32,23 @@ void CAdvancedOptionsVisuals::PerformLayout()
 {
 	BaseClass::PerformLayout();
 
-	int margin = 12;
-	int spacing = 8;
-	int labelHeight = 20;
-	int controlWidth = GetWide() - (margin * 2);
+	int w = GetWide();
+	int h = GetTall();
+
+	int margin = static_cast< int >( w * 0.05f );
+	int controlHeight = static_cast< int >( h * 0.08f );
+	int spacing = static_cast< int >( h * 0.04f );
+	int controlWidth = w - 2 * margin;
+
 	int y = margin;
 
-	m_pFPSCheckbox->SetBounds(margin, y, controlWidth, labelHeight);
-	y += labelHeight + spacing;
+	m_pFPSCheckbox->SetBounds( margin, y, controlWidth, controlHeight );
+	y += controlHeight + spacing;
 
-	m_pNetGraphCheckbox->SetBounds(margin, y, controlWidth, labelHeight);
-	y += labelHeight + spacing;
+	m_pNetGraphCheckbox->SetBounds( margin, y, controlWidth, controlHeight );
+	y += controlHeight + spacing;
 
-	m_pCrosshairCheckbox->SetBounds(margin, y, controlWidth, labelHeight);
-	y += labelHeight + spacing * 2;
+	m_pCrosshairCheckbox->SetBounds( margin, y, controlWidth, controlHeight );
 }
 
 void CAdvancedOptionsVisuals::OnTick()

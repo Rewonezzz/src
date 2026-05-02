@@ -28,6 +28,8 @@ public:
 	void Shutdown();
 
 	bool Get( const std::string &url, RequestCallback callback );
+	bool Post( const std::string &url, const std::string &jsonBody, RequestCallback callback );
+
 	bool DownloadToFile( const std::string &url, const std::string &filePath );
 
 private:

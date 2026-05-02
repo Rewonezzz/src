@@ -12,10 +12,17 @@
 
 CAdvancedOptionsGameplay::CAdvancedOptionsGameplay( Panel *parent, const char *panelName ) : BaseClass( parent, panelName )
 {
+	SetProportional( true );
 }
 
 void CAdvancedOptionsGameplay::PerformLayout()
 {
+	BaseClass::PerformLayout();
+
+	int marginX = static_cast< int >( GetWide() * 0.05f );
+	int marginY = static_cast< int >( GetTall() * 0.05f );
+
+	// TODO
 }
 
 void CAdvancedOptionsGameplay::OnCommand( const char *command )

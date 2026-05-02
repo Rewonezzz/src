@@ -72,9 +72,15 @@ class CMDLPanelAdv : public CMDLPanel
 	DECLARE_CLASS_SIMPLE( CMDLPanelAdv, CMDLPanel );
 
 public:
-    CMDLPanelAdv( vgui::Panel *pParent, const char *pName );
+	CMDLPanelAdv( vgui::Panel *pParent, const char *pName );
 
-	void PlayActivity(Activity activity);
+	virtual void SetMDL( const char *pMDLName, void *pProxyData = NULL );
+	virtual void OnTick();
+
+	void PlayActivity( Activity activity );
+
+private:
+	virtual void PrePaint3D( IMatRenderContext *pRenderContext );
 };
 
 class CAdvancedOptionsMultiplayer : public vgui::PropertyPage
@@ -100,12 +106,14 @@ protected:
 	void		 PopulatePlayerModels();
 	virtual void OnTick();
 
+	virtual void ApplySchemeSettings( vgui::IScheme *pScheme ) OVERRIDE;
+
 	MESSAGE_FUNC_PARAMS( OnColorPicked, "ColorPickerPicked", data );
 
 private:
 	vgui::Label				  *m_pNameLabel;
 	vgui::TextEntry			  *m_pNameEntry;
-	CMDLPanelAdv				  *m_pPMModel;
+	CMDLPanelAdv			  *m_pPMModel;
 	vgui::Panel				  *m_pVerticalSeparator;
 	vgui::ComboBox			  *m_pPMSelector;
 	std::vector< std::string > m_PMPaths;
@@ -130,9 +138,9 @@ private:
 	vgui::ComboBox				*m_pHandModelSelector;
 	std::vector< HandModelInfo > m_HandModels;
 
-	vgui::Button 				*m_pRefreshPMBtn;
+	vgui::Button *m_pRefreshPMBtn;
 
-	const char *m_pszCurrentPM;
+	bool m_bFirstInit;
 };
 
 #endif

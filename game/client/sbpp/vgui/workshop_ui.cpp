@@ -1,0 +1,1108 @@
+//========== Copyright (C) 2026, Team HL2SB++, All rights reserved. ===========//
+//
+// Purpose: GitHub-backed workshop client for HL2SB++
+//
+//===========================================================================//
+
+#include "cbase.h"
+#include "workshop_ui.h"
+#include "cdll_client_int.h"
+#include "keyvaluesjson.h"
+#include "webmanager.h"
+#include "KeyValues.h"
+#include "filesystem.h"
+#include "menu/imageextbutton.h"
+
+#include <vgui/ISurface.h>
+#include <vgui/IVGui.h>
+#include <vgui/IInput.h>
+#include <vgui/IScheme.h>
+#include <vgui_controls/ScrollBar.h>
+#include <vgui_controls/MessageBox.h>
+#include "vgui_controls/PropertySheet.h"
+
+#ifdef _WIN32
+#undef MessageBox
+#undef PostMessage
+#endif
+
+// memdbgon must be the last include file in a .cpp file!!!
+#include "tier0/memdbgon.h"
+
+#define WORKSHOP_API_URL "https://workshop-bot.sbpp-workshop.workers.dev/addons.json"
+
+static WorkshopClient  *g_pWorkshopClient = nullptr;
+static CWorkshopDialog *g_pWorkshopDialog = nullptr;
+
+static int Scale( int value )
+{
+	return vgui::scheme()->GetProportionalScaledValue( value );
+}
+
+WorkshopClient::WorkshopClient( const char *downloadFolder ) : m_downloadFolder( downloadFolder )
+{
+	filesystem->CreateDirHierarchy( m_downloadFolder.String(), "MOD" );
+
+	m_tempFolder = "downloads/temp";
+	filesystem->CreateDirHierarchy( m_tempFolder.String(), "MOD" );
+}
+
+WorkshopClient::~WorkshopClient()
+{
+}
+
+bool WorkshopClient::ParseAddonsJSON( const char *jsonText, CUtlVector< Addon > &outAddons )
+{
+	if ( !jsonText || !*jsonText )
+		return false;
+
+	KeyValuesJSONParser parser( jsonText );
+	KeyValues		   *pRoot = parser.ParseFile();
+	if ( !pRoot )
+	{
+		Warning( "Workshop: JSON parse error at line %d: %s\n", parser.m_nLine, parser.m_szErrMsg );
+		return false;
+	}
+
+	KeyValues *pAddons = pRoot->FindKey( "addons" );
+	if ( !pAddons )
+	{
+		Warning( "Workshop: 'addons' array missing\n" );
+		pRoot->deleteThis();
+		return false;
+	}
+
+	for ( KeyValues *pNode = pAddons->GetFirstSubKey(); pNode; pNode = pNode->GetNextKey() )
+	{
+		Addon addon;
+
+		addon.id = pNode->GetString( "id", "" );
+		addon.name = pNode->GetString( "name", "" );
+		addon.description = pNode->GetString( "description", "" );
+		addon.version = pNode->GetString( "version", "" );
+		addon.author = pNode->GetString( "author", "" );
+		addon.authorId = pNode->GetString( "author_id", "" );
+		addon.thumbnailUrl = pNode->GetString( "thumbnail", "" );
+		addon.downloadUrl = pNode->GetString( "url", "" );
+		addon.sha256 = pNode->GetString( "sha256", "" );
+		addon.size = pNode->GetUint64( "size", 0 );
+		addon.submittedAt = pNode->GetString( "submitted_at", "" );
+		addon.approvedAt = pNode->GetString( "approved_at", "" );
+		addon.approvedBy = pNode->GetString( "approved_by", "" );
+
+		if ( !addon.id.IsEmpty() && !addon.name.IsEmpty() )
+			outAddons.AddToTail( addon );
+	}
+
+	pRoot->deleteThis();
+	DevMsg( "Workshop: Parsed %d addons\n", outAddons.Count() );
+	return outAddons.Count() > 0;
+}
+
+void WorkshopClient::FetchThumbnails()
+{
+	char tempAbs[MAX_PATH];
+	tempAbs[0] = '\0';
+
+	filesystem->CreateDirHierarchy( m_tempFolder.String(), "MOD" );
+
+	{
+		CUtlString sentinel;
+		sentinel.Format( "%s/.sentinel", m_tempFolder.String() );
+		FileHandle_t fh = filesystem->Open( sentinel.String(), "wb", "MOD" );
+		if ( fh != FILESYSTEM_INVALID_HANDLE )
+		{
+			filesystem->Close( fh );
+			char fullSentinel[MAX_PATH];
+			if ( filesystem->RelativePathToFullPath( sentinel.String(), "MOD", fullSentinel, sizeof( fullSentinel ) ) )
+			{
+				V_strncpy( tempAbs, fullSentinel, sizeof( tempAbs ) );
+				V_StripFilename( tempAbs );
+			}
+			filesystem->RemoveFile( sentinel.String(), "MOD" );
+		}
+	}
+
+	if ( tempAbs[0] == '\0' )
+	{
+		Warning( "Workshop: Could not resolve temp folder absolute path\n" );
+		return;
+	}
+
+	for ( int i = 0; i < m_cachedAddons.Count(); ++i )
+	{
+		Addon &a = m_cachedAddons[i];
+		if ( a.thumbnailUrl.IsEmpty() )
+			continue;
+
+		CUtlString	cleanUrl = a.thumbnailUrl;
+		const char *q = V_strrchr( cleanUrl.String(), '?' );
+		if ( q )
+			cleanUrl.SetLength( q - cleanUrl.String() );
+
+		const char *ext = V_strrchr( cleanUrl.String(), '.' );
+		char		filename[128];
+		if ( ext && V_strlen( ext ) <= 5 )
+			V_snprintf( filename, sizeof( filename ), "%s%s", a.id.String(), ext );
+		else
+			V_snprintf( filename, sizeof( filename ), "%s.png", a.id.String() );
+
+		CUtlString relPath;
+		relPath.Format( "%s/%s", m_tempFolder.String(), filename );
+
+		char absPath[MAX_PATH];
+		V_snprintf( absPath, sizeof( absPath ), "%s%c%s", tempAbs, CORRECT_PATH_SEPARATOR, filename );
+
+		if ( !g_pFullFileSystem->FileExists( relPath.String(), "MOD" ) )
+		{
+			DevMsg( "Workshop: Downloading thumbnail %s -> %s\n", a.thumbnailUrl.String(), absPath );
+
+			if ( !g_pWebManager->DownloadToFile( a.thumbnailUrl.String(), absPath ) )
+			{
+				Warning( "Workshop: Failed to download thumbnail for %s\n", a.id.String() );
+				continue;
+			}
+		}
+
+		a.localThumbPath = relPath;
+	}
+}
+
+void WorkshopClient::FetchAddons( AddonListCallback cb )
+{
+	DevMsg( "Workshop: Fetching addon list...\n" );
+
+	g_pWebManager->Get( WORKSHOP_API_URL,
+		[this, cb]( bool success, const std::string &response )
+		{
+			if ( !success )
+			{
+				Warning( "Workshop: Failed to fetch addon list\n" );
+				if ( cb )
+					cb( false, m_cachedAddons );
+				return;
+			}
+
+			m_cachedAddons.RemoveAll();
+			if ( !ParseAddonsJSON( response.c_str(), m_cachedAddons ) )
+			{
+				if ( cb )
+					cb( false, m_cachedAddons );
+				return;
+			}
+
+			FetchThumbnails();
+
+			if ( cb )
+				cb( true, m_cachedAddons );
+		} );
+}
+
+void WorkshopClient::DownloadAddon( const Addon &addon, AddonActionCallback cb )
+{
+	if ( addon.downloadUrl.IsEmpty() )
+	{
+		if ( cb )
+			cb( false, "empty download url" );
+		return;
+	}
+
+	filesystem->CreateDirHierarchy( m_downloadFolder.String(), "MOD" );
+
+	char folderAbs[MAX_PATH];
+	folderAbs[0] = '\0';
+	{
+		CUtlString sentinel;
+		sentinel.Format( "%s/.sentinel", m_downloadFolder.String() );
+		FileHandle_t fh = filesystem->Open( sentinel.String(), "wb", "MOD" );
+		if ( fh != FILESYSTEM_INVALID_HANDLE )
+		{
+			filesystem->Close( fh );
+			char fullSentinel[MAX_PATH];
+			if ( filesystem->RelativePathToFullPath( sentinel.String(), "MOD", fullSentinel, sizeof( fullSentinel ) ) )
+			{
+				V_strncpy( folderAbs, fullSentinel, sizeof( folderAbs ) );
+				V_StripFilename( folderAbs );
+			}
+			filesystem->RemoveFile( sentinel.String(), "MOD" );
+		}
+	}
+
+	if ( folderAbs[0] == '\0' )
+	{
+		if ( cb )
+			cb( false, "Could not resolve download folder" );
+		return;
+	}
+
+	char absPath[MAX_PATH];
+	V_snprintf( absPath, sizeof( absPath ), "%s%c%s.zip", folderAbs, CORRECT_PATH_SEPARATOR, addon.id.String() );
+
+	DevMsg( "Workshop: Downloading %s to %s\n", addon.id.String(), absPath );
+
+	if ( !g_pWebManager->DownloadToFile( addon.downloadUrl.String(), absPath ) )
+	{
+		if ( cb )
+			cb( false, "download failed" );
+		return;
+	}
+
+	DevMsg( "Workshop: Successfully downloaded %s\n", addon.id.String() );
+	if ( cb )
+		cb( true, nullptr );
+}
+
+void WorkshopClient::GetInstalledAddonIDs( CUtlVector< CUtlString > &outIDs )
+{
+	outIDs.RemoveAll();
+
+	char		searchPattern[512];
+	const char *folder = m_downloadFolder.String();
+	int			folderLen = V_strlen( folder );
+	if ( folderLen > 0 && folder[folderLen - 1] == '/' )
+		V_snprintf( searchPattern, sizeof( searchPattern ), "%s*.zip", folder );
+	else
+		V_snprintf( searchPattern, sizeof( searchPattern ), "%s/*.zip", folder );
+
+	FileFindHandle_t findHandle = 0;
+	const char		*found = g_pFullFileSystem->FindFirst( searchPattern, &findHandle );
+	while ( found )
+	{
+		CUtlString	name = found;
+		const char *dot = V_strrchr( name.String(), '.' );
+		if ( dot )
+			name.SetLength( dot - name.String() );
+
+		if ( !name.IsEmpty() )
+			outIDs.AddToTail( name );
+
+		found = g_pFullFileSystem->FindNext( findHandle );
+	}
+
+	if ( findHandle != 0 )
+		g_pFullFileSystem->FindClose( findHandle );
+}
+
+bool WorkshopClient::IsAddonInstalled( const char *id )
+{
+	if ( !id || !*id )
+		return false;
+
+	CUtlString path;
+	path.Format( "%s/%s.zip", m_downloadFolder.String(), id );
+	return g_pFullFileSystem->FileExists( path.String() );
+}
+
+bool WorkshopClient::RemoveAddon( const char *id )
+{
+	if ( !id || !*id )
+		return false;
+
+	CUtlString path;
+	path.Format( "%s/%s.zip", m_downloadFolder.String(), id );
+	if ( g_pFullFileSystem->FileExists( path.String() ) )
+	{
+		filesystem->RemoveFile( path.String(), "MOD" );
+		return true;
+	}
+	return false;
+}
+
+WorkshopClient *GetWorkshopClient()
+{
+	return g_pWorkshopClient;
+}
+
+void InitWorkshopClient( const char *downloadFolder )
+{
+	if ( g_pWorkshopClient )
+	{
+		Warning( "Workshop: Client already initialized\n" );
+		return;
+	}
+	g_pWorkshopClient = new WorkshopClient( downloadFolder );
+}
+
+void ShutdownWorkshopClient()
+{
+	if ( g_pWorkshopClient )
+	{
+		delete g_pWorkshopClient;
+		g_pWorkshopClient = nullptr;
+	}
+}
+
+CAddonThumbnailPanel::CAddonThumbnailPanel( Panel *parent, const char *panelName, const Addon &addon, bool allowSubscribe ) :
+	BaseClass( parent, panelName ),
+	m_addon( addon ),
+	m_bSubscribed( false ),
+	m_bHovered( false ),
+	m_allowSubscribe( allowSubscribe ),
+	m_pImageContainer( nullptr ),
+	m_pImageButton( nullptr ),
+	m_pCheckbox( nullptr ),
+	m_pNameLabel( nullptr ),
+	m_pSizeLabel( nullptr )
+{
+	SetMouseInputEnabled( true );
+	SetPaintBackgroundEnabled( true );
+
+	const int padding = 8;
+	const int imageW = 200;
+	const int imageH = 112;
+	const int checkboxSize = 22;
+	const int nameH = 18;
+	const int sizeH = 14;
+	const int textGap = 2;
+	const int bottomGap = 6;
+	const int bottomPad = 8;
+
+	const int bottomBlockH = nameH + textGap + sizeH;
+	const int panelW = imageW + padding * 2;
+	const int panelH = padding + imageH + bottomGap + bottomBlockH + bottomPad;
+
+	SetSize( panelW, panelH );
+
+	const char *thumbPath = addon.localThumbPath.IsEmpty() ? "" : addon.localThumbPath.String();
+
+	m_pImageContainer = new Panel( this, "ImageContainer" );
+	m_pImageContainer->SetBounds( padding, padding, imageW, imageH );
+	m_pImageContainer->SetMouseInputEnabled( false );
+
+	ImageExtButton *imgBtn = new ImageExtButton( m_pImageContainer, "AddonImageBtn", thumbPath, nullptr, nullptr, nullptr );
+	imgBtn->SetBounds( 0, 0, imageW, imageH );
+	imgBtn->SetScaleImage( true );
+	imgBtn->SetMouseInputEnabled( false );
+	m_pImageButton = imgBtn;
+
+	const int checkX = panelW - padding - checkboxSize;
+	const int checkY = panelH - padding - checkboxSize;
+
+	m_pCheckbox = new CheckButton( this, "SubscribeCheck", "" );
+	m_pCheckbox->SetBounds( checkX, checkY, checkboxSize, checkboxSize );
+	m_pCheckbox->SetMouseInputEnabled( m_allowSubscribe );
+	m_pCheckbox->SetVisible( m_allowSubscribe );
+	m_pCheckbox->AddActionSignalTarget( this );
+	m_pCheckbox->SetText( "" );
+	m_pCheckbox->SetPaintBackgroundEnabled( false );
+	m_pCheckbox->SetZPos( 10 );
+
+	const int bottomY = padding + imageH + bottomGap;
+	const int textX = padding;
+	const int rightReserve = m_allowSubscribe ? ( checkboxSize + padding ) : 0;
+	const int textW = panelW - padding - textX - rightReserve;
+
+	m_pNameLabel = new Label( this, "AddonName", addon.name.String() );
+	m_pNameLabel->SetBounds( textX, bottomY, textW, nameH );
+	m_pNameLabel->SetContentAlignment( Label::a_west );
+	m_pNameLabel->SetMouseInputEnabled( false );
+
+	char sizeStr[64];
+	V_snprintf( sizeStr, sizeof( sizeStr ), "%.2f MB", addon.size / ( 1024.0f * 1024.0f ) );
+	m_pSizeLabel = new Label( this, "AddonSize", sizeStr );
+	m_pSizeLabel->SetBounds( textX, bottomY + nameH + textGap, textW, sizeH );
+	m_pSizeLabel->SetContentAlignment( Label::a_west );
+	m_pSizeLabel->SetMouseInputEnabled( false );
+
+	if ( CWorkshopDialog *pDlg = GetWorkshopDialog() )
+    	AddActionSignalTarget( pDlg );
+}
+
+CAddonThumbnailPanel::~CAddonThumbnailPanel()
+{
+}
+
+void CAddonThumbnailPanel::ApplySchemeSettings( IScheme *pScheme )
+{
+	BaseClass::ApplySchemeSettings( pScheme );
+
+	SetBorder( pScheme->GetBorder( "ButtonBorder" ) );
+	SetBgColor( pScheme->GetColor( "ListPanel.BgColor", Color( 40, 40, 40, 255 ) ) );
+
+	if ( m_pNameLabel )
+		m_pNameLabel->SetFgColor( pScheme->GetColor( "Label.TextColor", Color( 255, 255, 255, 255 ) ) );
+	if ( m_pSizeLabel )
+		m_pSizeLabel->SetFgColor( pScheme->GetColor( "Label.DisabledTextColor", Color( 150, 150, 150, 255 ) ) );
+}
+
+void CAddonThumbnailPanel::PerformLayout()
+{
+	BaseClass::PerformLayout();
+}
+
+void CAddonThumbnailPanel::PaintBackground()
+{
+	BaseClass::PaintBackground();
+
+	int w, h;
+	GetSize( w, h );
+
+	int mx, my;
+	input()->GetCursorPos( mx, my );
+	ScreenToLocal( mx, my );
+
+	m_bHovered = ( mx >= 0 && mx < w && my >= 0 && my < h );
+
+	if ( m_bHovered )
+	{
+		surface()->DrawSetColor( Color( 100, 150, 255, 50 ) );
+		surface()->DrawFilledRect( 0, 0, w, h );
+	}
+}
+
+void CAddonThumbnailPanel::SetSubscribed( bool subscribed )
+{
+	if ( m_bSubscribed == subscribed )
+		return;
+
+	m_bSubscribed = subscribed;
+
+	if ( m_pCheckbox && m_pCheckbox->IsSelected() != subscribed )
+		m_pCheckbox->SetSelected( subscribed );
+
+    PropertyDialog *pDlg = dynamic_cast<PropertyDialog*>( GetWorkshopDialog() );
+    if ( pDlg )
+        PostMessage( pDlg, new KeyValues( "ApplyButtonEnable" ) );
+}
+
+void CAddonThumbnailPanel::OnMousePressed( MouseCode code )
+{
+	if ( code != MOUSE_LEFT )
+		return;
+
+	int mx, my;
+	input()->GetCursorPos( mx, my );
+	ScreenToLocal( mx, my );
+
+	if ( m_pCheckbox && m_allowSubscribe )
+	{
+		int cbX, cbY, cbW, cbH;
+		m_pCheckbox->GetBounds( cbX, cbY, cbW, cbH );
+		if ( mx >= cbX && mx < cbX + cbW && my >= cbY && my < cbY + cbH )
+			return;
+	}
+
+	ShowAddonDetails();
+}
+
+void CAddonThumbnailPanel::ShowAddonDetails()
+{
+	CUtlString text;
+	text.Format( "Name: %s\n\nDescription:\n%s\n\n", m_addon.name.String(), m_addon.description.IsEmpty() ? "(no description)" : m_addon.description.String() );
+
+	char buf[128];
+	V_snprintf( buf, sizeof( buf ), "Size: %.2f MB\n", m_addon.size / ( 1024.0f * 1024.0f ) );
+	text.Append( buf );
+
+	if ( !m_addon.version.IsEmpty() )
+	{
+		text.Append( "Version: " );
+		text.Append( m_addon.version.String() );
+		text.Append( "\n" );
+	}
+
+	if ( !m_addon.author.IsEmpty() )
+	{
+		text.Append( "By: " );
+		text.Append( m_addon.author.String() );
+		text.Append( "\n" );
+	}
+
+	if ( !m_addon.approvedAt.IsEmpty() )
+	{
+		text.Append( "Approved: " );
+		text.Append( m_addon.approvedAt.String() );
+		text.Append( "\n" );
+	}
+
+	text.Append( "ID: " );
+	text.Append( m_addon.id.String() );
+
+	vgui::MessageBox *pMsg = new vgui::MessageBox( m_addon.name.String(), text.String(), this );
+	pMsg->DoModal();
+}
+
+void CAddonThumbnailPanel::OnCheckButtonChecked( int state )
+{
+	if ( m_allowSubscribe )
+	{
+		SetSubscribed( m_pCheckbox->IsSelected() );
+	}
+}
+
+CBrowsePage::CBrowsePage( Panel *parent, const char *panelName ) : BaseClass( parent, panelName ), m_pViewport( nullptr ), m_pContentPanel( nullptr ), m_pVScroll( nullptr ), m_lastContentWidth( 0 ), m_contentTall( 0 )
+{
+	SetProportional( true );
+
+	m_pViewport = new EditablePanel( this, "AddonViewport" );
+	m_pContentPanel = new EditablePanel( m_pViewport, "AddonContent" );
+	m_pContentPanel->SetAutoDelete( false );
+
+	m_pVScroll = new ScrollBar( this, "BrowseScrollBar", true );
+	m_pVScroll->SetVisible( false );
+	m_pVScroll->AddActionSignalTarget( this );
+
+	SetBgColor( Color( 30, 30, 30, 255 ) );
+}
+
+CBrowsePage::~CBrowsePage()
+{
+}
+
+void CBrowsePage::OnMouseWheeled( int delta )
+{
+	if ( !m_pVScroll || !m_pVScroll->IsVisible() )
+		return;
+
+	int cur = m_pVScroll->GetValue();
+	int step = MAX( 1, m_pVScroll->GetRangeWindow() / 10 );
+	cur -= delta * step;
+
+	int mn, mx;
+	m_pVScroll->GetRange( mn, mx );
+	int window = m_pVScroll->GetRangeWindow();
+	cur = clamp( cur, mn, MAX( mn, mx - window ) );
+	m_pVScroll->SetValue( cur );
+
+	InvalidateLayout( true );
+}
+
+void CBrowsePage::OnScrollBarMoved( KeyValues *pKV )
+{
+	InvalidateLayout( true );
+}
+
+void CBrowsePage::ComputeLayoutPositions()
+{
+	const int padding = 10;
+	const int spacingX = 12;
+	const int spacingY = 12;
+
+	int tileW, tileH;
+	CAddonThumbnailPanel::GetTileDimensions( tileW, tileH );
+
+	int contentWidth = m_lastContentWidth;
+	if ( contentWidth <= 0 )
+	{
+		m_contentTall = 0;
+		m_tileRects.RemoveAll();
+		return;
+	}
+
+	int usable = contentWidth - padding * 2;
+	int columns = ( usable + spacingX ) / ( tileW + spacingX );
+	if ( columns < 1 )
+		columns = 1;
+
+	m_tileRects.RemoveAll();
+	m_tileRects.EnsureCapacity( m_AddonPanels.Count() );
+
+	for ( int i = 0; i < m_AddonPanels.Count(); ++i )
+	{
+		int		 col = i % columns;
+		int		 row = i / columns;
+		TileRect r;
+		r.x = padding + col * ( tileW + spacingX );
+		r.y = padding + row * ( tileH + spacingY );
+		r.w = tileW;
+		r.h = tileH;
+		m_tileRects.AddToTail( r );
+	}
+
+	int rows = ( m_AddonPanels.Count() + columns - 1 ) / columns;
+	m_contentTall = padding * 2 + rows * tileH + ( rows > 0 ? ( rows - 1 ) * spacingY : 0 );
+}
+
+void CBrowsePage::UpdatePositions()
+{
+	for ( int i = 0; i < m_AddonPanels.Count() && i < m_tileRects.Count(); ++i )
+	{
+		if ( m_AddonPanels[i] )
+			m_AddonPanels[i]->SetBounds( m_tileRects[i].x, m_tileRects[i].y, m_tileRects[i].w, m_tileRects[i].h );
+	}
+}
+
+void CBrowsePage::PerformLayout()
+{
+	BaseClass::PerformLayout();
+
+	const int scrollBarW = 16;
+	const int padding = 4;
+
+	int w, h;
+	GetSize( w, h );
+	if ( w <= 10 || h <= 10 )
+		return;
+
+	bool needScroll = m_contentTall > ( h - padding * 2 );
+
+	int viewportW = w - padding * 2 - ( needScroll ? scrollBarW + padding : 0 );
+	int viewportH = h - padding * 2;
+
+	m_pViewport->SetBounds( padding, padding, viewportW, viewportH );
+
+	int contentWidth = viewportW;
+
+	bool needsRecompute = ( contentWidth != m_lastContentWidth ) || ( m_tileRects.Count() != m_AddonPanels.Count() );
+
+	if ( needsRecompute )
+	{
+		m_lastContentWidth = contentWidth;
+		ComputeLayoutPositions();
+	}
+
+	needScroll = m_contentTall > viewportH;
+
+	m_pContentPanel->SetSize( contentWidth, MAX( m_contentTall, viewportH ) );
+
+	UpdatePositions();
+
+	m_pVScroll->SetVisible( needScroll );
+	if ( needScroll )
+	{
+		m_pVScroll->SetBounds( w - scrollBarW - padding, padding, scrollBarW, viewportH );
+		m_pVScroll->SetRange( 0, m_contentTall );
+		m_pVScroll->SetRangeWindow( viewportH );
+		m_pVScroll->SetButtonPressedScrollValue( MAX( 1, viewportH / 10 ) );
+
+		int val = m_pVScroll->GetValue();
+		m_pContentPanel->SetPos( 0, -val );
+	}
+	else
+	{
+		m_pContentPanel->SetPos( 0, 0 );
+	}
+}
+
+void CBrowsePage::OnPageShow()
+{
+	BaseClass::OnPageShow();
+	RefreshList();
+}
+
+void CBrowsePage::OnRefreshClicked()
+{
+	RefreshList();
+}
+
+void CBrowsePage::RefreshList()
+{
+	WorkshopClient *pClient = GetWorkshopClient();
+	if ( !pClient )
+		return;
+
+	for ( int i = 0; i < m_AddonPanels.Count(); ++i )
+	{
+		if ( m_AddonPanels[i] )
+			m_AddonPanels[i]->MarkForDeletion();
+	}
+	m_AddonPanels.RemoveAll();
+	m_tileRects.RemoveAll();
+
+	pClient->FetchAddons(
+		[this]( bool success, const CUtlVector< Addon > & )
+		{
+			if ( success )
+				PopulateGrid();
+		} );
+}
+
+void CBrowsePage::PopulateGrid()
+{
+	WorkshopClient *pClient = GetWorkshopClient();
+	if ( !pClient )
+		return;
+
+	for ( int i = 0; i < m_AddonPanels.Count(); ++i )
+	{
+		if ( m_AddonPanels[i] )
+			m_AddonPanels[i]->MarkForDeletion();
+	}
+	m_AddonPanels.RemoveAll();
+
+	const CUtlVector< Addon > &addons = pClient->GetCachedAddons();
+
+	CUtlVector< CUtlString > installed;
+	pClient->GetInstalledAddonIDs( installed );
+
+	for ( int i = 0; i < addons.Count(); ++i )
+	{
+		CAddonThumbnailPanel *pPanel = new CAddonThumbnailPanel( m_pContentPanel, "AddonTile", addons[i], true );
+
+		bool isInstalled = false;
+		for ( int j = 0; j < installed.Count(); ++j )
+		{
+			if ( !V_stricmp( installed[j].String(), addons[i].id.String() ) )
+			{
+				isInstalled = true;
+				break;
+			}
+		}
+		pPanel->SetSubscribed( isInstalled );
+		m_AddonPanels.AddToTail( pPanel );
+	}
+
+	m_tileRects.RemoveAll();
+	InvalidateLayout( true, false );
+}
+
+void CBrowsePage::ApplySubscriptionChanges()
+{
+    WorkshopClient *pClient = GetWorkshopClient();
+    if ( !pClient )
+        return;
+
+    for ( int i = 0; i < m_AddonPanels.Count(); ++i )
+    {
+        CAddonThumbnailPanel *pTile = m_AddonPanels[i];
+        if ( !pTile )
+            continue;
+
+        const Addon &addon = pTile->GetAddon();
+        bool wantSubscribed = pTile->IsSubscribed();
+        bool isInstalled    = pClient->IsAddonInstalled( addon.id.String() );
+
+        if ( wantSubscribed && !isInstalled )
+        {
+            pClient->DownloadAddon( addon, []( bool ok, const char *err )
+            {
+                if ( !ok )
+                    Warning( "Workshop: download failed: %s\n", err ? err : "(unknown)" );
+            } );
+        }
+        else if ( !wantSubscribed && isInstalled )
+        {
+            pClient->RemoveAddon( addon.id.String() );
+        }
+    }
+
+    if ( CWorkshopDialog *pDlg = GetWorkshopDialog() )
+    {
+        if ( pDlg->m_pSubscribedPage )
+            pDlg->m_pSubscribedPage->RefreshList();
+    }
+}
+
+CSubscribedPage::CSubscribedPage( Panel *parent, const char *panelName ) : BaseClass( parent, panelName ), m_pViewport( nullptr ), m_pContentPanel( nullptr ), m_pVScroll( nullptr ), m_lastContentWidth( 0 ), m_contentTall( 0 )
+{
+	SetProportional( true );
+
+	m_pViewport = new EditablePanel( this, "AddonViewport" );
+	m_pContentPanel = new EditablePanel( m_pViewport, "AddonContent" );
+	m_pContentPanel->SetAutoDelete( false );
+
+	m_pVScroll = new ScrollBar( this, "BrowseScrollBar", true );
+	m_pVScroll->SetVisible( false );
+	m_pVScroll->AddActionSignalTarget( this );
+
+	SetBgColor( Color( 30, 30, 30, 255 ) );
+}
+
+CSubscribedPage::~CSubscribedPage()
+{
+}
+
+void CSubscribedPage::OnMouseWheeled( int delta )
+{
+	if ( !m_pVScroll || !m_pVScroll->IsVisible() )
+		return;
+
+	int cur = m_pVScroll->GetValue();
+	int step = MAX( 1, m_pVScroll->GetRangeWindow() / 10 );
+	cur -= delta * step;
+
+	int mn, mx;
+	m_pVScroll->GetRange( mn, mx );
+	int window = m_pVScroll->GetRangeWindow();
+	cur = clamp( cur, mn, MAX( mn, mx - window ) );
+	m_pVScroll->SetValue( cur );
+
+	InvalidateLayout( true );
+}
+
+void CSubscribedPage::OnScrollBarMoved( KeyValues *pKV )
+{
+	InvalidateLayout( true );
+}
+
+void CSubscribedPage::ComputeLayoutPositions()
+{
+	const int padding = 10;
+	const int spacingX = 12;
+	const int spacingY = 12;
+
+	int tileW, tileH;
+	CAddonThumbnailPanel::GetTileDimensions( tileW, tileH );
+
+	int contentWidth = m_lastContentWidth;
+	if ( contentWidth <= 0 )
+	{
+		m_contentTall = 0;
+		m_tileRects.RemoveAll();
+		return;
+	}
+
+	int usable = contentWidth - padding * 2;
+	int columns = ( usable + spacingX ) / ( tileW + spacingX );
+	if ( columns < 1 )
+		columns = 1;
+
+	m_tileRects.RemoveAll();
+	m_tileRects.EnsureCapacity( m_AddonPanels.Count() );
+
+	for ( int i = 0; i < m_AddonPanels.Count(); ++i )
+	{
+		int		 col = i % columns;
+		int		 row = i / columns;
+		TileRect r;
+		r.x = padding + col * ( tileW + spacingX );
+		r.y = padding + row * ( tileH + spacingY );
+		r.w = tileW;
+		r.h = tileH;
+		m_tileRects.AddToTail( r );
+	}
+
+	int rows = ( m_AddonPanels.Count() + columns - 1 ) / columns;
+	m_contentTall = padding * 2 + rows * tileH + ( rows > 0 ? ( rows - 1 ) * spacingY : 0 );
+}
+
+void CSubscribedPage::UpdatePositions()
+{
+	for ( int i = 0; i < m_AddonPanels.Count() && i < m_tileRects.Count(); ++i )
+	{
+		if ( m_AddonPanels[i] )
+			m_AddonPanels[i]->SetBounds( m_tileRects[i].x, m_tileRects[i].y, m_tileRects[i].w, m_tileRects[i].h );
+	}
+}
+
+void CSubscribedPage::PerformLayout()
+{
+	BaseClass::PerformLayout();
+
+	const int scrollBarW = 16;
+	const int padding = 4;
+
+	int w, h;
+	GetSize( w, h );
+	if ( w <= 10 || h <= 10 )
+		return;
+
+	bool needScroll = m_contentTall > ( h - padding * 2 );
+
+	int viewportW = w - padding * 2 - ( needScroll ? scrollBarW + padding : 0 );
+	int viewportH = h - padding * 2;
+
+	m_pViewport->SetBounds( padding, padding, viewportW, viewportH );
+
+	int contentWidth = viewportW;
+
+	bool needsRecompute = ( contentWidth != m_lastContentWidth ) || ( m_tileRects.Count() != m_AddonPanels.Count() );
+
+	if ( needsRecompute )
+	{
+		m_lastContentWidth = contentWidth;
+		ComputeLayoutPositions();
+	}
+
+	needScroll = m_contentTall > viewportH;
+
+	m_pContentPanel->SetSize( contentWidth, MAX( m_contentTall, viewportH ) );
+
+	UpdatePositions();
+
+	m_pVScroll->SetVisible( needScroll );
+	if ( needScroll )
+	{
+		m_pVScroll->SetBounds( w - scrollBarW - padding, padding, scrollBarW, viewportH );
+		m_pVScroll->SetRange( 0, m_contentTall );
+		m_pVScroll->SetRangeWindow( viewportH );
+		m_pVScroll->SetButtonPressedScrollValue( MAX( 1, viewportH / 10 ) );
+
+		int val = m_pVScroll->GetValue();
+		m_pContentPanel->SetPos( 0, -val );
+	}
+	else
+	{
+		m_pContentPanel->SetPos( 0, 0 );
+	}
+}
+
+void CSubscribedPage::OnPageShow()
+{
+	BaseClass::OnPageShow();
+	RefreshList();
+	InvalidateLayout( true, true );
+}
+
+void CSubscribedPage::OnRefreshClicked()
+{
+	RefreshList();
+	InvalidateLayout( true, true );
+}
+
+void CSubscribedPage::RefreshList()
+{
+	WorkshopClient *pClient = GetWorkshopClient();
+	if ( !pClient )
+		return;
+
+	for ( int i = 0; i < m_AddonPanels.Count(); ++i )
+	{
+		if ( m_AddonPanels[i] )
+			m_AddonPanels[i]->MarkForDeletion();
+	}
+	m_AddonPanels.RemoveAll();
+	m_tileRects.RemoveAll();
+
+	pClient->FetchAddons(
+		[this]( bool success, const CUtlVector< Addon > & )
+		{
+			if ( success )
+				PopulateGrid();
+		} );
+}
+
+void CSubscribedPage::PopulateGrid()
+{
+	WorkshopClient *pClient = GetWorkshopClient();
+	if ( !pClient )
+		return;
+
+	for ( int i = 0; i < m_AddonPanels.Count(); ++i )
+	{
+		if ( m_AddonPanels[i] )
+			m_AddonPanels[i]->MarkForDeletion();
+	}
+	m_AddonPanels.RemoveAll();
+
+	CUtlVector< CUtlString > installed;
+	pClient->GetInstalledAddonIDs( installed );
+
+	const CUtlVector< Addon > &addons = pClient->GetCachedAddons();
+
+	for ( int i = 0; i < addons.Count(); ++i )
+	{
+		bool isInstalled = false;
+		for ( int j = 0; j < installed.Count(); ++j )
+		{
+			if ( !V_stricmp( installed[j].String(), addons[i].id.String() ) )
+			{
+				isInstalled = true;
+				break;
+			}
+		}
+		if ( !isInstalled )
+			continue;
+
+		CAddonThumbnailPanel *pPanel = new CAddonThumbnailPanel( m_pContentPanel, "SubAddonTile", addons[i], false );
+		pPanel->SetSubscribed( true );
+		m_AddonPanels.AddToTail( pPanel );
+	}
+
+	m_tileRects.RemoveAll();
+	InvalidateLayout( true, false );
+}
+
+CWorkshopDialog::CWorkshopDialog( Panel *parent ) : BaseClass( parent, "WorkshopDialog" ), m_pBrowsePage( nullptr ), m_pSubscribedPage( nullptr )
+{
+	SetTitle( "#SBPP_Workshop_Title", true );
+	SetSize( 850, 650 );
+
+	SetSizeable( true );
+	SetMoveable( true );
+	SetCloseButtonVisible( true );
+	SetApplyButtonVisible( true );
+
+	m_pBrowsePage = new CBrowsePage( this, "BrowsePage" );
+	m_pSubscribedPage = new CSubscribedPage( this, "SubscribedPage" );
+
+	AddPage( m_pBrowsePage, "#SBPP_BrowseAddons" );
+	AddPage( m_pSubscribedPage, "#SBPP_Subscribed" );
+
+	GetPropertySheet()->InvalidateLayout( true, true );
+}
+
+CWorkshopDialog::~CWorkshopDialog()
+{
+	g_pWorkshopDialog = nullptr;
+}
+
+void CWorkshopDialog::PerformLayout()
+{
+	BaseClass::PerformLayout();
+}
+
+void CWorkshopDialog::ApplyChanges()
+{
+	BaseClass::ApplyChanges();
+
+    WorkshopClient *pClient = GetWorkshopClient();
+    if ( !pClient )
+        return;
+
+    if ( m_pBrowsePage )
+        m_pBrowsePage->ApplySubscriptionChanges();
+}
+
+void CWorkshopDialog::OnCommand( const char *cmd )
+{
+    if ( !V_stricmp( cmd, "OK" ) || !V_stricmp( cmd, "Apply" ) )
+    {
+        if ( m_pBrowsePage )
+            m_pBrowsePage->ApplySubscriptionChanges();
+    }
+    BaseClass::OnCommand( cmd );
+}
+
+void CWorkshopDialog::Activate()
+{
+	BaseClass::Activate();
+	MoveToCenterOfScreen();
+}
+
+CWorkshopDialog *GetWorkshopDialog()
+{
+	if ( !g_pWorkshopDialog )
+		g_pWorkshopDialog = new CWorkshopDialog( nullptr );
+	return g_pWorkshopDialog;
+}
+
+void ShowWorkshop()
+{
+	CWorkshopDialog *pDialog = GetWorkshopDialog();
+	if ( pDialog )
+		pDialog->Activate();
+}
+
+CON_COMMAND( sbpp_workshop, "Open the SBPP workshop" )
+{
+	if ( !GetWorkshopClient() )
+	{
+		Warning( "Workshop: client not initialized.\n" );
+		return;
+	}
+	ShowWorkshop();
+}
+
+class CWorkshopGameSystem : public CAutoGameSystem
+{
+public:
+	CWorkshopGameSystem()
+	{
+	}
+	virtual ~CWorkshopGameSystem()
+	{
+	}
+
+	virtual bool Init() override
+	{
+		InitWorkshopClient( "addons/" );
+		return true;
+	}
+
+	virtual void Shutdown() override
+	{
+		ShutdownWorkshopClient();
+	}
+};
+static CWorkshopGameSystem g_WorkshopSystem;

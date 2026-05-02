@@ -217,16 +217,21 @@ void CLoadingScreen::DestroyMaterials()
 
 void CLoadingScreen::RenderText( const char *text, int x, int y, int r, int g, int b, int a )
 {
-	if ( m_hFont == vgui::INVALID_FONT || !g_pMatSystemSurface )
+	if ( m_hFont == vgui::INVALID_FONT || !vgui::surface() )
 		return;
 
 	vgui::VPANEL root = vgui::surface()->GetEmbeddedPanel();
-	vgui::surface()->PushMakeCurrent( root, false );
+	if ( !root )
+		return;
 
-	g_pMatSystemSurface->DrawColoredText( m_hFont, x, y, r, g, b, a, "%s", text );
+	wchar_t wtext[1024];
+	g_pVGuiLocalize->ConvertANSIToUnicode( text, wtext, sizeof( wtext ) );
+
+	vgui::surface()->DrawSetTextFont( m_hFont );
+	vgui::surface()->DrawSetTextColor( r, g, b, a );
+	vgui::surface()->DrawSetTextPos( x, y );
+	vgui::surface()->DrawPrintText( wtext, wcslen( wtext ) );
 	vgui::surface()->DrawFlushText();
-
-	vgui::surface()->PopMakeCurrent( root );
 }
 
 void CLoadingScreen::UpdateState( const char *pszMessage, float progress )
@@ -295,9 +300,9 @@ void CLoadingScreen::Draw()
 		DrawScreenSpaceRectangle( m_pBarMaterial, barX, barY, fillW, barH, 0.0f, 0.0f, 1.0f, 1.0f, 1, 1, nullptr, 1, 1, 0.0f );
 	}
 
-	pRenderContext->OverrideDepthEnable( false, false );
-
 	RenderText( m_message, w / 2 - 100, barY + barH + 20, 255, 255, 255, 255 );
+
+	pRenderContext->OverrideDepthEnable( false, false );
 
 	g_pMaterialSystem->SwapBuffers();
 }

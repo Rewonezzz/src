@@ -113,12 +113,86 @@ bool CWebManager::Get( const std::string &url, RequestCallback callback )
 	return success;
 }
 
+bool CWebManager::Post( const std::string &url, const std::string &jsonBody, RequestCallback callback )
+{
+	CURL *curl = curl_easy_init();
+	if ( !curl )
+		return false;
+
+	FileHandle_t hFile = g_pFullFileSystem->Open( "settings/cacert.pem", "rb", "GAME" );
+	if ( hFile )
+	{
+		int	  nSize = g_pFullFileSystem->Size( hFile );
+		char *pBuf = new char[nSize];
+		g_pFullFileSystem->Read( pBuf, nSize, hFile );
+		g_pFullFileSystem->Close( hFile );
+
+		struct curl_blob blob;
+		blob.data = pBuf;
+		blob.len = nSize;
+		blob.flags = CURL_BLOB_COPY;
+
+		curl_easy_setopt( curl, CURLOPT_CAINFO_BLOB, &blob );
+
+		delete[] pBuf;
+	}
+
+	std::string response;
+
+	struct curl_slist *headers = NULL;
+	headers = curl_slist_append( headers, "Content-Type: application/json" );
+	headers = curl_slist_append( headers, "Accept: application/json" );
+
+	curl_easy_setopt( curl, CURLOPT_URL, url.c_str() );
+	curl_easy_setopt( curl, CURLOPT_POST, 1L );
+	curl_easy_setopt( curl, CURLOPT_POSTFIELDS, jsonBody.c_str() );
+	curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE, (long)jsonBody.size() );
+	curl_easy_setopt( curl, CURLOPT_HTTPHEADER, headers );
+
+	curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
+	curl_easy_setopt( curl, CURLOPT_WRITEDATA, &response );
+
+	curl_easy_setopt( curl, CURLOPT_USERAGENT, "HL2SBPP/1.1" );
+	curl_easy_setopt( curl, CURLOPT_FOLLOWLOCATION, 1L );
+	curl_easy_setopt( curl, CURLOPT_SSL_VERIFYPEER, 1L );
+	curl_easy_setopt( curl, CURLOPT_SSL_VERIFYHOST, 2L );
+	curl_easy_setopt( curl, CURLOPT_CONNECTTIMEOUT, 10L );
+	curl_easy_setopt( curl, CURLOPT_TIMEOUT, 30L );
+
+	bool success = PerformRequest( curl );
+
+	curl_slist_free_all( headers );
+	curl_easy_cleanup( curl );
+
+	callback( success, response );
+	return success;
+}
+
 bool CWebManager::DownloadToFile( const std::string &url, const std::string &filePath )
 {
 	CURL *curl = curl_easy_init();
 
 	if ( !curl )
 		return false;
+
+	// Load cacert.pem for SSL (same as Get/Post)
+	FileHandle_t hFile = g_pFullFileSystem->Open( "settings/cacert.pem", "rb", "GAME" );
+	if ( hFile )
+	{
+		int	  nSize = g_pFullFileSystem->Size( hFile );
+		char *pBuf = new char[nSize];
+		g_pFullFileSystem->Read( pBuf, nSize, hFile );
+		g_pFullFileSystem->Close( hFile );
+
+		struct curl_blob blob;
+		blob.data = pBuf;
+		blob.len = nSize;
+		blob.flags = CURL_BLOB_COPY;
+
+		curl_easy_setopt( curl, CURLOPT_CAINFO_BLOB, &blob );
+
+		delete[] pBuf;
+	}
 
 	FileHandle_t file = g_pFullFileSystem->Open( filePath.c_str(), "wb" );
 
@@ -132,7 +206,13 @@ bool CWebManager::DownloadToFile( const std::string &url, const std::string &fil
 	curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteFileCallback );
 	curl_easy_setopt( curl, CURLOPT_WRITEDATA, file );
 
+	curl_easy_setopt( curl, CURLOPT_USERAGENT, "HL2SBPP/1.1" );
 	curl_easy_setopt( curl, CURLOPT_FOLLOWLOCATION, 1L );
+	curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 10L );
+	curl_easy_setopt( curl, CURLOPT_SSL_VERIFYPEER, 1L );
+	curl_easy_setopt( curl, CURLOPT_SSL_VERIFYHOST, 2L );
+	curl_easy_setopt( curl, CURLOPT_CONNECTTIMEOUT, 10L );
+	curl_easy_setopt( curl, CURLOPT_TIMEOUT, 300L );
 
 	bool success = PerformRequest( curl );
 
