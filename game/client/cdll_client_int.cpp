@@ -185,6 +185,8 @@ extern vgui::IInputInternal *g_InputInternal;
 #ifdef _WIN32
 #undef MessageBox
 #undef CreateEvent
+
+#pragma comment(lib, "Normaliz.lib")
 #endif
 #endif
 

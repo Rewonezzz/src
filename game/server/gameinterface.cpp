@@ -132,6 +132,8 @@ extern ConVar tf_mm_servermode;
 #ifdef _WIN32
 #undef MessageBox
 #undef CreateEvent
+
+#pragma comment(lib, "Normaliz.lib")
 #endif
 #endif
 
