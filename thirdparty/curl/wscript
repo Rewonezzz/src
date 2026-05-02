@@ -178,6 +178,7 @@ def configure(conf):
 
 def build(bld):
 	curl_dir = bld.path.abspath()
+	root_dir = bld.top_dir
 
 	sources = list(CURL_SOURCES)
 
@@ -221,6 +222,8 @@ def build(bld):
 		includes        = [
 			os.path.join(curl_dir, 'include'),
 			os.path.join(curl_dir, 'lib'),
+			os.path.join(root_dir, 'public'),
+			os.path.join(root_dir, 'public/zlib'),
 		],
 		defines         = defines,
 		cflags          = cflags,
