@@ -39,13 +39,25 @@
 #define HAVE_LIBZ 1
 
 #if defined(__aarch64__)
-    #define OS "aarch64-linux-android"
-    #define SIZEOF_LONG 8
-    #define SIZEOF_SIZE_T 8
+	#define OS "aarch64-unknown-linux-android"
+	#define SIZEOF_LONG 8
+	#define SIZEOF_SIZE_T 8
 #elif defined(__arm__)
-    #define OS "arm-linux-androideabi"
-    #define SIZEOF_LONG 4
-    #define SIZEOF_SIZE_T 4
+	#define OS "arm-unknown-linux-androideabi"
+	#define SIZEOF_LONG 4
+	#define SIZEOF_SIZE_T 4
+#elif defined(__x86_64__)
+	#define OS "x86_64-unknown-linux-android"
+	#define SIZEOF_LONG 8
+	#define SIZEOF_SIZE_T 8
+#elif defined(__i386__)
+	#define OS "i686-unknown-linux-android"
+	#define SIZEOF_LONG 4
+	#define SIZEOF_SIZE_T 4
+#else
+	#define OS "unknown-linux-android"
+	#define SIZEOF_LONG 4
+	#define SIZEOF_SIZE_T 4
 #endif
 
 #define HAVE_UNISTD_H 1
@@ -58,18 +70,21 @@
 #define HAVE_NETDB_H 1
 #define HAVE_PTHREAD_H 1
 #define HAVE_POLL_H 1
+#define HAVE_IFADDRS_H 1
 
 #define HAVE_POLL 1
 #define HAVE_SELECT 1
 #define HAVE_SOCKET 1
 #define HAVE_RECV 1
 #define HAVE_SEND 1
-#define HAVE_FCNTL 1
-#define HAVE_FCNTL_O_NONBLOCK 1
 #define HAVE_CLOCK_GETTIME_MONOTONIC 1
+#define HAVE_GETIFADDRS 1
 
 #define USE_THREADS_POSIX 1
 #define USE_OPENSSL 1
+#define HAVE_OPENSSL_CRYPTO_H 1
+#define HAVE_OPENSSL_ERR_H 1
+#define HAVE_OPENSSL_SSL_H 1
 
 #define RECV_TYPE_RETV ssize_t
 #define RECV_TYPE_ARG1 int
@@ -94,4 +109,3 @@
 
 #define HAVE_FCNTL 1
 #define HAVE_FCNTL_O_NONBLOCK 1
-

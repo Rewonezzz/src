@@ -24,8 +24,6 @@
 #define HAVE_LONGLONG 1
 #define SIZEOF_INT 4
 #define SIZEOF_SHORT 2
-#define SIZEOF_LONG 8
-#define SIZEOF_SIZE_T 8
 #define SIZEOF_CURL_OFF_T 8
 #define SIZEOF_TIME_T 8
 
@@ -40,29 +38,47 @@
 #define HAVE_ZLIB_H 1
 #define HAVE_LIBZ 1
 
-#define OS "x86_64-apple-darwin"
+#if defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__)
+	#if defined(__aarch64__) || defined(__arm64__)
+		#define OS "arm64-apple-darwin"
+	#else
+		#define OS "x86_64-apple-darwin"
+	#endif
+	#define SIZEOF_LONG 8
+	#define SIZEOF_SIZE_T 8
+#else
+	#define OS "i386-apple-darwin"
+	#define SIZEOF_LONG 4
+	#define SIZEOF_SIZE_T 4
+#endif
 
 #define HAVE_UNISTD_H 1
 #define HAVE_SYS_TIME_H 1
 #define HAVE_SYS_SOCKET_H 1
 #define HAVE_SYS_IOCTL_H 1
+#define HAVE_SYS_PARAM_H 1
+#define HAVE_SYS_SELECT_H 1
+#define HAVE_SYS_UIO_H 1
+#define HAVE_SYS_UN_H 1
 #define HAVE_NETINET_IN_H 1
 #define HAVE_NETINET_TCP_H 1
 #define HAVE_ARPA_INET_H 1
 #define HAVE_NETDB_H 1
 #define HAVE_PTHREAD_H 1
 #define HAVE_POLL_H 1
+#define HAVE_IFADDRS_H 1
 
 #define HAVE_POLL 1
 #define HAVE_SELECT 1
 #define HAVE_SOCKET 1
 #define HAVE_RECV 1
 #define HAVE_SEND 1
-#define HAVE_FCNTL 1
-#define HAVE_FCNTL_O_NONBLOCK 1
+#define HAVE_GETIFADDRS 1
 #define HAVE_MACH_ABSOLUTE_TIME 1
 
 #define USE_THREADS_POSIX 1
+
+/* Use native Apple TLS */
 #define USE_SECTRANSP 1
 
 #define RECV_TYPE_RETV ssize_t

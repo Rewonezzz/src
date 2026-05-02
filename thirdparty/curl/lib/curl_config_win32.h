@@ -38,14 +38,30 @@
 #define HAVE_ZLIB_H 1
 #define HAVE_LIBZ 1
 
-#define OS "x86_64-pc-win32"
+#if defined(_WIN64)
+	#define OS "x86_64-pc-win32"
+	#define SIZEOF_LONG 4
+	#define SIZEOF_SIZE_T 8
+#else
+	#define OS "i386-pc-win32"
+	#define SIZEOF_LONG 4
+	#define SIZEOF_SIZE_T 4
+#endif
 
-#define SIZEOF_LONG 4
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#define HAVE_SSIZE_T 1
+#if defined(_WIN64)
+	#define SIZEOF_SSIZE_T 8
+#else
+	#define SIZEOF_SSIZE_T 4
+#endif
 
 #define HAVE_WINDOWS_H 1
 #define HAVE_WINSOCK2_H 1
 #define HAVE_WS2TCPIP_H 1
 #define HAVE_IO_H 1
+#define HAVE_PROCESS_H 1
 
 #define HAVE_CLOSESOCKET 1
 #define HAVE_IOCTLSOCKET 1
@@ -59,6 +75,7 @@
 #define USE_THREADS_WIN32 1
 #define USE_WINDOWS_SSPI 1
 #define USE_SCHANNEL 1
+#define USE_WIN32_CRYPTO 1
 #define USE_WIN32_IDN 1
 #define WANT_IDN_PROTOTYPES 1
 
@@ -75,13 +92,9 @@
 #define SEND_TYPE_ARG3 int
 #define SEND_TYPE_ARG4 int
 
-#define HAVE_STRCASECMP 0
-#define HAVE_STRNCASECMP 0
+#define HAVE_STRICMP 1
+#define HAVE_STRNICMP 1
 
-#define HAVE_ERRNO_H 0
+#define HAVE_ERRNO_H 1
 
-#define SOCKERRNO (errno)
-#define SET_SOCKERRNO(x) (errno = (x))
-
-#define HAVE_FCNTL 1
-#define HAVE_FCNTL_O_NONBLOCK 1
+#define HAVE_FCNTL_H 1

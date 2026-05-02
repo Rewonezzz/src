@@ -39,16 +39,16 @@
 #define HAVE_LIBZ 1
 
 #if defined(__x86_64__) || defined(__ppc64__)
-    #define OS "x86_64-pc-linux-gnu"
-    #define SIZEOF_LONG 8
-    #define SIZEOF_SIZE_T 8
+	#define OS "x86_64-pc-linux-gnu"
+	#define SIZEOF_LONG 8
+	#define SIZEOF_SIZE_T 8
 #elif defined(__i386__)
-    #define OS "i686-pc-linux-gnu"
-    #define SIZEOF_LONG 4
-    #define SIZEOF_SIZE_T 4
+	#define OS "i686-pc-linux-gnu"
+	#define SIZEOF_LONG 4
+	#define SIZEOF_SIZE_T 4
 #else
-    #define OS "unknown-linux-gnu"
-    #define SIZEOF_LONG 4
+	#define OS "unknown-linux-gnu"
+	#define SIZEOF_LONG 4
 #endif
 
 #define HAVE_UNISTD_H 1
