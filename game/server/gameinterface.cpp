@@ -128,6 +128,11 @@ extern ConVar tf_mm_servermode;
 #ifdef SBPP
 #include "sbpp/mount.h"
 #include "webmanager.h"
+
+#ifdef _WIN32
+#undef MessageBox
+#undef CreateEvent
+#endif
 #endif
 
 #ifdef PORTAL

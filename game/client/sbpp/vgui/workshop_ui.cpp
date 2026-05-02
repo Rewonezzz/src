@@ -19,7 +19,7 @@
 #include <vgui/IScheme.h>
 #include <vgui_controls/ScrollBar.h>
 #include <vgui_controls/MessageBox.h>
-#include "vgui_controls/PropertySheet.h"
+#include <vgui_controls/PropertySheet.h>
 
 #ifdef _WIN32
 #undef MessageBox
@@ -1019,7 +1019,7 @@ CWorkshopDialog::CWorkshopDialog( Panel *parent ) : BaseClass( parent, "Workshop
 	AddPage( m_pBrowsePage, "#SBPP_BrowseAddons" );
 	AddPage( m_pSubscribedPage, "#SBPP_Subscribed" );
 
-	GetPropertySheet()->InvalidateLayout( true, true );
+	//GetPropertySheet()->InvalidateLayout( true, true );
 }
 
 CWorkshopDialog::~CWorkshopDialog()
