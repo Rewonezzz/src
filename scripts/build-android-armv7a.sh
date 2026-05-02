@@ -18,7 +18,7 @@ fi
 sudo dpkg --add-architecture i386
 sudo apt-get update
 sudo apt-get install -y aptitude
-sudo aptitude install -y zlib1g:i386 libc6:i386 libncurses5:i386 libstdc++6:i386 libopenal-dev:i386 g++-multilib gcc-multilib libpng-dev:i386 libjpeg-dev:i386 libfreetype6-dev:i386 libfontconfig1-dev:i386 libcurl4-gnutls-dev:i386 libsdl2-dev:i386 zlib1g-dev:i386 libbz2-dev:i386 libedit-dev:i386
+sudo aptitude install -y zlib1g:i386 libc6:i386 libncurses5:i386 libstdc++6:i386 libopenal-dev:i386 g++-multilib gcc-multilib libpng-dev:i386 libjpeg-dev:i386 libfreetype6-dev:i386 libfontconfig1-dev:i386 libcurl4-gnutls-dev:i386 libsdl2-dev:i386 zlib1g-dev:i386 libbz2-dev:i386 libedit-dev:i386 libssl-dev:i386
 sudo apt-get install zlib1g:i386 zlib1g
 
 export ANDROID_BUILD_TOOLS_VERSION=29.0.3
@@ -29,4 +29,4 @@ export PATH="$PWD/clang+llvm-11.1.0-x86_64-linux-gnu-ubuntu-16.04/bin:$PATH"
 export PATH="$ANDROID_SDK_ROOT/build-tools/29.0.3:$PATH"
 
 ./waf configure -T release --prefix=srceng-mod-launcher/android --togles --android=armeabi-v7a-hard,host,21 --target=../armeabi-v7a --disable-warns &&
-./waf install --target=client,server,GameUI,engine,studiorender,matsys_controls,vphysics -j$(nproc)
+./waf install --target=client,server,GameUI,engine,studiorender,matsys_controls,vphysics,curl,lua -j$(nproc)
