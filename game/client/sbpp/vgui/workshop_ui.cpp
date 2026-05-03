@@ -7,11 +7,13 @@
 #include "cbase.h"
 #include "workshop_ui.h"
 #include "cdll_client_int.h"
-#include "keyvaluesjson.h"
 #include "webmanager.h"
 #include "KeyValues.h"
 #include "filesystem.h"
 #include "menu/imageextbutton.h"
+
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
 
 #include <vgui/ISurface.h>
 #include <vgui/IVGui.h>
@@ -51,50 +53,153 @@ WorkshopClient::~WorkshopClient()
 {
 }
 
+static void SanitizeBrokenJSON( CUtlString &json )
+{
+	const char *src = json.String();
+	int			len = V_strlen( src );
+
+	CUtlBuffer out( 0, len + 64, CUtlBuffer::TEXT_BUFFER );
+
+	bool inString = false;
+	bool escape = false;
+
+	for ( int i = 0; i < len; ++i )
+	{
+		char c = src[i];
+
+		if ( !inString )
+		{
+			out.PutChar( c );
+			if ( c == '"' )
+				inString = true;
+			continue;
+		}
+
+		if ( escape )
+		{
+			out.PutChar( c );
+			escape = false;
+			continue;
+		}
+
+		if ( c == '\\' )
+		{
+			out.PutChar( c );
+			escape = true;
+			continue;
+		}
+
+		if ( c == '"' )
+		{
+			int j = i + 1;
+			while ( j < len && ( src[j] == ' ' || src[j] == '\t' || src[j] == '\r' || src[j] == '\n' ) )
+				++j;
+
+			char n = ( j < len ) ? src[j] : '\0';
+			bool isTerminator = ( n == ',' || n == '}' || n == ']' || n == ':' || n == '\0' );
+
+			if ( isTerminator )
+			{
+				out.PutChar( '"' );
+				inString = false;
+			}
+			else
+			{
+				out.PutChar( '\\' );
+				out.PutChar( '"' );
+			}
+			continue;
+		}
+
+		out.PutChar( c );
+	}
+
+	out.PutChar( '\0' );
+	json = (const char *)out.Base();
+}
+
 bool WorkshopClient::ParseAddonsJSON( const char *jsonText, CUtlVector< Addon > &outAddons )
 {
 	if ( !jsonText || !*jsonText )
 		return false;
 
-	KeyValuesJSONParser parser( jsonText );
-	KeyValues		   *pRoot = parser.ParseFile();
-	if ( !pRoot )
+	CUtlString sanitized = jsonText;
+	SanitizeBrokenJSON( sanitized );
+
+	rapidjson::Document doc;
+
+	doc.Parse< rapidjson::kParseStopWhenDoneFlag >( sanitized.String() );
+
+	if ( doc.HasParseError() )
 	{
-		Warning( "Workshop: JSON parse error at line %d: %s\n", parser.m_nLine, parser.m_szErrMsg );
+		Warning( "Workshop: JSON parse error at offset %zu: %s\n", doc.GetErrorOffset(), rapidjson::GetParseError_En( doc.GetParseError() ) );
+
+		size_t		off = doc.GetErrorOffset();
+		const char *src = sanitized.String();
+		size_t		len = V_strlen( src );
+		size_t		start = off > 40 ? off - 40 : 0;
+		size_t		end = MIN( len, off + 40 );
+		Warning( "Workshop: near: ...%.*s<<<HERE>>>%.*s...\n", (int)( off - start ), src + start, (int)( end - off ), src + off );
 		return false;
 	}
 
-	KeyValues *pAddons = pRoot->FindKey( "addons" );
-	if ( !pAddons )
+	if ( !doc.IsObject() || !doc.HasMember( "addons" ) || !doc["addons"].IsArray() )
 	{
-		Warning( "Workshop: 'addons' array missing\n" );
-		pRoot->deleteThis();
+		Warning( "Workshop: malformed response (missing addons array)\n" );
 		return false;
 	}
 
-	for ( KeyValues *pNode = pAddons->GetFirstSubKey(); pNode; pNode = pNode->GetNextKey() )
+	const auto &addons = doc["addons"];
+	outAddons.EnsureCapacity( addons.Size() );
+
+	auto GetStr = []( const rapidjson::Value &v, const char *key, const char *def = "" ) -> const char *
 	{
-		Addon addon;
+		if ( !v.HasMember( key ) )
+			return def;
+		const auto &f = v[key];
+		return f.IsString() ? f.GetString() : def;
+	};
 
-		addon.id = pNode->GetString( "id", "" );
-		addon.name = pNode->GetString( "name", "" );
-		addon.description = pNode->GetString( "description", "" );
-		addon.version = pNode->GetString( "version", "" );
-		addon.author = pNode->GetString( "author", "" );
-		addon.authorId = pNode->GetString( "author_id", "" );
-		addon.thumbnailUrl = pNode->GetString( "thumbnail", "" );
-		addon.downloadUrl = pNode->GetString( "url", "" );
-		addon.sha256 = pNode->GetString( "sha256", "" );
-		addon.size = pNode->GetUint64( "size", 0 );
-		addon.submittedAt = pNode->GetString( "submitted_at", "" );
-		addon.approvedAt = pNode->GetString( "approved_at", "" );
-		addon.approvedBy = pNode->GetString( "approved_by", "" );
+	auto GetUint64 = []( const rapidjson::Value &v, const char *key, uint64 def = 0 ) -> uint64
+	{
+		if ( !v.HasMember( key ) )
+			return def;
+		const auto &f = v[key];
+		if ( f.IsUint64() )
+			return f.GetUint64();
+		if ( f.IsInt64() )
+			return (uint64)f.GetInt64();
+		if ( f.IsUint() )
+			return (uint64)f.GetUint();
+		if ( f.IsString() )
+			return (uint64)V_atoui64( f.GetString() );
+		return def;
+	};
 
-		if ( !addon.id.IsEmpty() && !addon.name.IsEmpty() )
-			outAddons.AddToTail( addon );
+	for ( auto it = addons.Begin(); it != addons.End(); ++it )
+	{
+		if ( !it->IsObject() )
+			continue;
+
+		Addon a;
+		a.id = GetStr( *it, "id" );
+		a.name = GetStr( *it, "name" );
+		a.description = GetStr( *it, "description" );
+		a.version = GetStr( *it, "version" );
+		a.author = GetStr( *it, "author" );
+		a.authorId = GetStr( *it, "author_id" );
+		a.thumbnailUrl = GetStr( *it, "thumbnail" );
+		a.downloadUrl = GetStr( *it, "url" );
+		a.sha256 = GetStr( *it, "sha256" );
+		a.submittedAt = GetStr( *it, "submitted_at" );
+		a.approvedAt = GetStr( *it, "approved_at" );
+		a.approvedBy = GetStr( *it, "approved_by" );
+		a.size = GetUint64( *it, "size" );
+
+		if ( !a.id.IsEmpty() && !a.name.IsEmpty() )
+			outAddons.AddToTail( a );
 	}
 
-	pRoot->deleteThis();
 	DevMsg( "Workshop: Parsed %d addons\n", outAddons.Count() );
 	return outAddons.Count() > 0;
 }
@@ -173,9 +278,9 @@ void WorkshopClient::FetchAddons( AddonListCallback cb )
 	DevMsg( "Workshop: Fetching addon list...\n" );
 
 	g_pWebManager->Get( WORKSHOP_API_URL,
-		[this, cb]( bool success, const std::string &response )
+		[this, cb]( const WebResult_t &r )
 		{
-			if ( !success )
+			if ( !r.success )
 			{
 				Warning( "Workshop: Failed to fetch addon list\n" );
 				if ( cb )
@@ -184,7 +289,7 @@ void WorkshopClient::FetchAddons( AddonListCallback cb )
 			}
 
 			m_cachedAddons.RemoveAll();
-			if ( !ParseAddonsJSON( response.c_str(), m_cachedAddons ) )
+			if ( !ParseAddonsJSON( r.body.c_str(), m_cachedAddons ) )
 			{
 				if ( cb )
 					cb( false, m_cachedAddons );
@@ -405,7 +510,7 @@ CAddonThumbnailPanel::CAddonThumbnailPanel( Panel *parent, const char *panelName
 	m_pSizeLabel->SetMouseInputEnabled( false );
 
 	if ( CWorkshopDialog *pDlg = GetWorkshopDialog() )
-    	AddActionSignalTarget( pDlg );
+		AddActionSignalTarget( pDlg );
 }
 
 CAddonThumbnailPanel::~CAddonThumbnailPanel()
@@ -460,9 +565,9 @@ void CAddonThumbnailPanel::SetSubscribed( bool subscribed )
 	if ( m_pCheckbox && m_pCheckbox->IsSelected() != subscribed )
 		m_pCheckbox->SetSelected( subscribed );
 
-    PropertyDialog *pDlg = dynamic_cast<PropertyDialog*>( GetWorkshopDialog() );
-    if ( pDlg )
-        PostMessage( pDlg, new KeyValues( "ApplyButtonEnable" ) );
+	PropertyDialog *pDlg = dynamic_cast< PropertyDialog * >( GetWorkshopDialog() );
+	if ( pDlg )
+		PostMessage( pDlg, new KeyValues( "ApplyButtonEnable" ) );
 }
 
 void CAddonThumbnailPanel::OnMousePressed( MouseCode code )
@@ -677,7 +782,9 @@ void CBrowsePage::PerformLayout()
 void CBrowsePage::OnPageShow()
 {
 	BaseClass::OnPageShow();
-	RefreshList();
+
+	if ( m_AddonPanels.Count() == 0 )
+		RefreshList();
 }
 
 void CBrowsePage::OnRefreshClicked()
@@ -748,39 +855,40 @@ void CBrowsePage::PopulateGrid()
 
 void CBrowsePage::ApplySubscriptionChanges()
 {
-    WorkshopClient *pClient = GetWorkshopClient();
-    if ( !pClient )
-        return;
+	WorkshopClient *pClient = GetWorkshopClient();
+	if ( !pClient )
+		return;
 
-    for ( int i = 0; i < m_AddonPanels.Count(); ++i )
-    {
-        CAddonThumbnailPanel *pTile = m_AddonPanels[i];
-        if ( !pTile )
-            continue;
+	for ( int i = 0; i < m_AddonPanels.Count(); ++i )
+	{
+		CAddonThumbnailPanel *pTile = m_AddonPanels[i];
+		if ( !pTile )
+			continue;
 
-        const Addon &addon = pTile->GetAddon();
-        bool wantSubscribed = pTile->IsSubscribed();
-        bool isInstalled    = pClient->IsAddonInstalled( addon.id.String() );
+		const Addon &addon = pTile->GetAddon();
+		bool		 wantSubscribed = pTile->IsSubscribed();
+		bool		 isInstalled = pClient->IsAddonInstalled( addon.id.String() );
 
-        if ( wantSubscribed && !isInstalled )
-        {
-            pClient->DownloadAddon( addon, []( bool ok, const char *err )
-            {
-                if ( !ok )
-                    Warning( "Workshop: download failed: %s\n", err ? err : "(unknown)" );
-            } );
-        }
-        else if ( !wantSubscribed && isInstalled )
-        {
-            pClient->RemoveAddon( addon.id.String() );
-        }
-    }
+		if ( wantSubscribed && !isInstalled )
+		{
+			pClient->DownloadAddon( addon,
+				[]( bool ok, const char *err )
+				{
+					if ( !ok )
+						Warning( "Workshop: download failed: %s\n", err ? err : "(unknown)" );
+				} );
+		}
+		else if ( !wantSubscribed && isInstalled )
+		{
+			pClient->RemoveAddon( addon.id.String() );
+		}
+	}
 
-    if ( CWorkshopDialog *pDlg = GetWorkshopDialog() )
-    {
-        if ( pDlg->m_pSubscribedPage )
-            pDlg->m_pSubscribedPage->RefreshList();
-    }
+	if ( CWorkshopDialog *pDlg = GetWorkshopDialog() )
+	{
+		if ( pDlg->m_pSubscribedPage )
+			pDlg->m_pSubscribedPage->RefreshList();
+	}
 }
 
 CSubscribedPage::CSubscribedPage( Panel *parent, const char *panelName ) : BaseClass( parent, panelName ), m_pViewport( nullptr ), m_pContentPanel( nullptr ), m_pVScroll( nullptr ), m_lastContentWidth( 0 ), m_contentTall( 0 )
@@ -1036,22 +1144,22 @@ void CWorkshopDialog::ApplyChanges()
 {
 	BaseClass::ApplyChanges();
 
-    WorkshopClient *pClient = GetWorkshopClient();
-    if ( !pClient )
-        return;
+	WorkshopClient *pClient = GetWorkshopClient();
+	if ( !pClient )
+		return;
 
-    if ( m_pBrowsePage )
-        m_pBrowsePage->ApplySubscriptionChanges();
+	if ( m_pBrowsePage )
+		m_pBrowsePage->ApplySubscriptionChanges();
 }
 
 void CWorkshopDialog::OnCommand( const char *cmd )
 {
-    if ( !V_stricmp( cmd, "OK" ) || !V_stricmp( cmd, "Apply" ) )
-    {
-        if ( m_pBrowsePage )
-            m_pBrowsePage->ApplySubscriptionChanges();
-    }
-    BaseClass::OnCommand( cmd );
+	if ( !V_stricmp( cmd, "OK" ) || !V_stricmp( cmd, "Apply" ) )
+	{
+		if ( m_pBrowsePage )
+			m_pBrowsePage->ApplySubscriptionChanges();
+	}
+	BaseClass::OnCommand( cmd );
 }
 
 void CWorkshopDialog::Activate()

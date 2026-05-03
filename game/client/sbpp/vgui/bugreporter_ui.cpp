@@ -182,24 +182,24 @@ void CBugReportPanel::ClearForm()
 
 void CBugReportPanel::ShowInfo( const char *title, const char *text )
 {
-    MessageBox *pBox = new MessageBox( title, text, NULL );
-    pBox->SetParent( enginevgui->GetPanel( PANEL_GAMEUIDLL ) );
-    pBox->MakePopup( false, true );
-    pBox->MoveToFront();
-    pBox->SetOKButtonVisible( true );
-    pBox->SetCloseButtonVisible( false );
-    pBox->DoModal();
+	MessageBox *pBox = new MessageBox( title, text, NULL );
+	pBox->SetParent( enginevgui->GetPanel( PANEL_GAMEUIDLL ) );
+	pBox->MakePopup( false, true );
+	pBox->MoveToFront();
+	pBox->SetOKButtonVisible( true );
+	pBox->SetCloseButtonVisible( false );
+	pBox->DoModal();
 }
 
 void CBugReportPanel::ShowError( const char *title, const char *text )
 {
-    MessageBox *pBox = new MessageBox( title, text, NULL );
-    pBox->SetParent( enginevgui->GetPanel( PANEL_GAMEUIDLL ) );
-    pBox->MakePopup( false, true );
-    pBox->MoveToFront();
-    pBox->SetOKButtonVisible( true );
-    pBox->SetCloseButtonVisible( false );
-    pBox->DoModal();
+	MessageBox *pBox = new MessageBox( title, text, NULL );
+	pBox->SetParent( enginevgui->GetPanel( PANEL_GAMEUIDLL ) );
+	pBox->MakePopup( false, true );
+	pBox->MoveToFront();
+	pBox->SetOKButtonVisible( true );
+	pBox->SetCloseButtonVisible( false );
+	pBox->DoModal();
 }
 
 void CBugReportPanel::SubmitReport()
@@ -267,12 +267,7 @@ void CBugReportPanel::SubmitReport()
 	m_pSubmit->SetEnabled( false );
 	m_pCancel->SetEnabled( false );
 
-	bool ok = g_pWebManager->Post( kBugReportUrl, body,
-		[]( bool success, const std::string &response )
-		{
-			(void)success;
-			(void)response;
-		} );
+	bool ok = g_pWebManager->Post( kBugReportUrl, body, []( const WebResult_t &r ) { (void)r; } );
 
 	m_bSubmitting = false;
 	m_pSubmit->SetEnabled( true );
