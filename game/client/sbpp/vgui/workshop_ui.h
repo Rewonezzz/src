@@ -246,7 +246,7 @@ public:
 	virtual void Activate();
 	virtual void PerformLayout();
 
-    virtual void ApplyChanges() OVERRIDE;
+	virtual void ApplyChanges() OVERRIDE;
 	virtual void OnCommand( const char *cmd ) OVERRIDE;
 
 public:
