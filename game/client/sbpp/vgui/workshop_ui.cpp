@@ -1,6 +1,6 @@
 //========== Copyright (C) 2026, Team HL2SB++, All rights reserved. ===========//
 //
-// Purpose: GitHub-backed workshop client for HL2SB++
+// Purpose:
 //
 //===========================================================================//
 
