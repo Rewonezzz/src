@@ -76,6 +76,21 @@ LUALIB_API int (luaopen_CNextBotPath)(lua_State *L);
 #define LUA_NEXTBOTLIBNAME "NextBot"
 LUALIB_API int (luaopen_CLuaNextBot)(lua_State *L);
 
+// material crap
+LUALIB_API int (luaopen_materials)(lua_State *L);
+
+#define LUA_IMESHLIBNAME "IMesh"
+LUALIB_API int (luaopen_IMesh)(lua_State *L);
+
+#define LUA_MESHBUILDERLIBNAME "CMeshBuilder"
+LUALIB_API int (luaopen_CMeshBuilder)(lua_State *L);
+
+#define LUA_TEXTURELIBNAME "ITexture"
+LUALIB_API int (luaopen_ITexture)(lua_State *L);
+
+#define LUA_MATRENDERCONTEXTLIBNAME "IMatRenderContext"
+LUALIB_API int (luaopen_IMatRenderContext)(lua_State *L);
+
 #endif
 
 #define LUA_CONTENTSLIBNAME				"CONTENTS"

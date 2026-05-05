@@ -1639,4 +1639,34 @@ int CHL2MPScriptedWeapon::DrawModel( int flags )
 
 	return BaseClass::DrawModel( flags );
 }
+
+void CHL2MPScriptedWeapon::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, float &zFar, float &fov )
+{
+	if ( m_nTableReference == LUA_NOREF )
+		return;
+	if ( !PushTableFromRef( L, m_nTableReference ) )
+		return;
+
+	BEGIN_LUA_CALL_WEAPON_METHOD( "CalcView" );
+		lua_pushhl2mpplayer( L, ToHL2MPPlayer( GetOwner() ) );
+		lua_pushvector( L, eyeOrigin );
+		lua_pushangle( L, eyeAngles );
+		lua_pushnumber( L, fov );
+		lua_pushnumber( L, zNear );
+		lua_pushnumber( L, zFar );
+	END_LUA_CALL_WEAPON_METHOD( 6, 5 );
+
+	if ( lua_isuserdata( L, -5 ) )
+		eyeOrigin = luaL_checkvector( L, -5 );
+	if ( lua_isuserdata( L, -4 ) )
+		eyeAngles = luaL_checkangle( L, -4 );
+	if ( lua_isnumber( L, -3 ) )
+		fov = (float)lua_tonumber( L, -3 );
+	if ( lua_isnumber( L, -2 ) )
+		zNear = (float)lua_tonumber( L, -2 );
+	if ( lua_isnumber( L, -1 ) )
+		zFar = (float)lua_tonumber( L, -1 );
+
+	lua_pop( L, 5 );
+}
 #endif

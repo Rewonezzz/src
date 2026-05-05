@@ -59,7 +59,7 @@ public:
 	virtual bool	Holster( CBaseCombatWeapon *pSwitchingTo );
 
 #ifdef CLIENT_DLL
-    void CallDrawHUD();
+	virtual void CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, float &zFar, float &fov );
 #endif
 
 #ifdef CLIENT_DLL

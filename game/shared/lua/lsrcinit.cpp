@@ -44,6 +44,13 @@ static const luaL_Reg luasrclibs[] = {
   {LUA_SPAWNMENULIBNAME, luaopen_sm},
 	{LUA_BASEFLEXLIBNAME, luaopen_CBaseFlex},
 	{LUA_BASEANIMATINGOVERLAYLIBNAME, luaopen_CBaseAnimatingOverlay},
+
+  // material crap
+  {LUA_IMESHLIBNAME, luaopen_IMesh},
+  {"materials", luaopen_materials},
+  {LUA_MESHBUILDERLIBNAME, luaopen_CMeshBuilder},
+  {LUA_TEXTURELIBNAME, luaopen_ITexture},
+  {LUA_MATRENDERCONTEXTLIBNAME, luaopen_IMatRenderContext},
 #endif
 #endif
   {LUA_AMMODEFLIB_NAME, luaopen_AmmoDef},

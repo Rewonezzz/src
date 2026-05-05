@@ -119,6 +119,16 @@ $Project "Client (SBPP)"
 			$File "lua\lc_nextbot.cpp"
 			$File "lua\lc_nextbot.h"
 
+			$File "lua\materialsystem\limesh.cpp"
+			$File "lua\materialsystem\limesh.h"
+			$File "lua\materialsystem\lmaterials.cpp"
+			$File "lua\materialsystem\lmeshbuilder.cpp"
+			$File "lua\materialsystem\lmeshbuilder.h"
+			$File "lua\materialsystem\litexture.cpp"
+			$File "lua\materialsystem\litexture.h"
+			$File "lua\materialsystem\lmatrendercontext.cpp"
+			$File "lua\materialsystem\lmatrendercontext.h"
+
 			$File "$SRCDIR\game\shared\sbpp\mount.cpp"
 		}
 

@@ -1,4 +1,4 @@
-//===== Copyright © 1996-2005, Valve Corporation, All rights reserved. ======//
+//===== Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ======//
 //
 // Purpose: 
 //
@@ -24,6 +24,7 @@ typedef IMaterial lua_IMaterial;
 
 LUA_API lua_IMaterial      *(lua_tomaterial) (lua_State *L, int idx);
 
+LUA_API lua_IMaterial      *(luaL_optmaterial) (lua_State *L, int narg, lua_IMaterial *def);
 
 /*
 ** push functions (C -> stack)

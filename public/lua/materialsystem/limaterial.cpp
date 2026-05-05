@@ -1,4 +1,4 @@
-//===== Copyright © 1996-2005, Valve Corporation, All rights reserved. ======//
+//===== Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ======//
 //
 // Purpose: 
 //
@@ -30,6 +30,10 @@ LUA_API lua_IMaterial *lua_tomaterial (lua_State *L, int idx) {
 }
 
 
+LUALIB_API lua_IMaterial *luaL_optmaterial (lua_State *L, int narg, lua_IMaterial *def) {
+  if (lua_isnoneornil(L, narg)) return def;
+  return luaL_checkmaterial(L, narg);
+}
 
 /*
 ** push functions (C -> stack)
@@ -60,12 +64,12 @@ static int IMaterial_AddRef (lua_State *L) {
 }
 
 static int IMaterial_AlphaModulate (lua_State *L) {
-  luaL_checkmaterial(L, 1)->AlphaModulate(luaL_checknumber(L, 1));
+  luaL_checkmaterial(L, 1)->AlphaModulate(luaL_checknumber(L, 2));
   return 0;
 }
 
 static int IMaterial_ColorModulate (lua_State *L) {
-  luaL_checkmaterial(L, 1)->ColorModulate(luaL_checknumber(L, 1), luaL_checknumber(L, 2), luaL_checknumber(L, 3));
+  luaL_checkmaterial(L, 1)->ColorModulate(luaL_checknumber(L, 2), luaL_checknumber(L, 3), luaL_checknumber(L, 4));
   return 0;
 }
 
@@ -209,7 +213,7 @@ static int IMaterial_IsVertexLit (lua_State *L) {
 }
 
 static int IMaterial_NeedsFullFrameBufferTexture (lua_State *L) {
-  lua_pushboolean(L, luaL_checkmaterial(L, 1)->NeedsFullFrameBufferTexture(luaL_optboolean(L, 1, 1)));
+  lua_pushboolean(L, luaL_checkmaterial(L, 1)->NeedsFullFrameBufferTexture(luaL_optboolean(L, 2, 1)));
   return 1;
 }
 
@@ -219,7 +223,7 @@ static int IMaterial_NeedsLightmapBlendAlpha (lua_State *L) {
 }
 
 static int IMaterial_NeedsPowerOfTwoFrameBufferTexture (lua_State *L) {
-  lua_pushboolean(L, luaL_checkmaterial(L, 1)->NeedsPowerOfTwoFrameBufferTexture(luaL_optboolean(L, 1, 1)));
+  lua_pushboolean(L, luaL_checkmaterial(L, 1)->NeedsPowerOfTwoFrameBufferTexture(luaL_optboolean(L, 2, 1)));
   return 1;
 }
 
@@ -259,17 +263,17 @@ static int IMaterial_Release (lua_State *L) {
 }
 
 static int IMaterial_SetMaterialVarFlag (lua_State *L) {
-  luaL_checkmaterial(L, 1)->SetMaterialVarFlag((MaterialVarFlags_t)luaL_checkint(L, 1), luaL_checkboolean(L, 2));
+  luaL_checkmaterial(L, 1)->SetMaterialVarFlag((MaterialVarFlags_t)luaL_checkint(L, 2), luaL_checkboolean(L, 3));
   return 0;
 }
 
 static int IMaterial_SetShader (lua_State *L) {
-  luaL_checkmaterial(L, 1)->SetShader(luaL_checkstring(L, 1));
+  luaL_checkmaterial(L, 1)->SetShader(luaL_checkstring(L, 2));
   return 0;
 }
 
 static int IMaterial_SetUseFixedFunctionBakedLighting (lua_State *L) {
-  luaL_checkmaterial(L, 1)->SetUseFixedFunctionBakedLighting(luaL_checkboolean(L, 1));
+  luaL_checkmaterial(L, 1)->SetUseFixedFunctionBakedLighting(luaL_checkboolean(L, 2));
   return 0;
 }
 

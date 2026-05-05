@@ -45,6 +45,11 @@
 #include "ScreenSpaceEffects.h"
 #include "sourcevr/isourcevirtualreality.h"
 #include "client_virtualreality.h"
+#ifdef LUA_SDK
+#include "lbaseplayer_shared.h"
+#include "mathlib/lvector.h"
+#include "weapon_hl2mpbase_scriptedweapon.h"
+#endif
 
 #if defined( REPLAY_ENABLED )
 #include "replay/ireplaysystem.h"
@@ -698,6 +703,45 @@ void CViewRender::SetUpViews()
 		// FIXME: What happens when there's no player?
 		if (pPlayer)
 		{
+#ifdef LUA_SDK
+			if ( g_bLuaInitialized )
+			{
+				BEGIN_LUA_CALL_HOOK( "CalcView" );
+					lua_pushplayer( L, pPlayer );
+					lua_pushvector( L, view.origin );
+					lua_pushangle( L, view.angles );
+					lua_pushnumber( L, view.fov );
+					lua_pushnumber( L, view.zNear );
+					lua_pushnumber( L, view.zFar );
+				END_LUA_CALL_HOOK( 6, 1 );
+
+				if ( lua_istable( L, -1 ) )
+				{
+					lua_getfield( L, -1, "origin" );
+					if ( !lua_isnil( L, -1 ) )
+						view.origin = luaL_checkvector( L, -1 );
+					lua_pop( L, 1 );
+
+					lua_getfield( L, -1, "angles" );
+					if ( !lua_isnil( L, -1 ) )
+						view.angles = luaL_checkangle( L, -1 );
+					lua_pop( L, 1 );
+
+					lua_getfield( L, -1, "fov" );
+					if ( !lua_isnil( L, -1 ) )
+						view.fov = lua_tonumber( L, -1 );
+					lua_pop( L, 1 );
+
+					lua_pop( L, 1 );
+				}
+				else
+					lua_pop( L, 1 );
+
+				CHL2MPScriptedWeapon *pScriptedWeapon = dynamic_cast< CHL2MPScriptedWeapon * >( pPlayer->GetActiveWeapon() );
+				if ( pScriptedWeapon )
+					pScriptedWeapon->CalcView( view.origin, view.angles, view.zNear, view.zFar, view.fov );
+			}
+#endif
 			pPlayer->CalcView( view.origin, view.angles, view.zNear, view.zFar, view.fov );
 
 			// If we are looking through another entities eyes, then override the angles/origin for view
