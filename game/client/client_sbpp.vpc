@@ -128,6 +128,12 @@ $Project "Client (SBPP)"
 			$File "lua\materialsystem\litexture.h"
 			$File "lua\materialsystem\lmatrendercontext.cpp"
 			$File "lua\materialsystem\lmatrendercontext.h"
+			$File "lua\materialsystem\lmaterialvar.cpp"
+			$File "lua\materialsystem\lmaterialvar.h"
+
+			$File "$SRCDIR\game\shared\lua\lnet_shared.cpp"
+			$File "$SRCDIR\game\shared\lua\lnet_shared.h"
+			$File "lua\lnet_client.cpp"
 
 			$File "$SRCDIR\game\shared\sbpp\mount.cpp"
 		}

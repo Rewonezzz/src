@@ -119,6 +119,9 @@ extern ConVar tf_mm_servermode;
 #include "luamanager.h"
 #include "luacachefile.h"
 #include "mountaddons.h"
+#ifdef SBPP
+#include "lnet_shared.h"
+#endif
 #endif
 
 #ifdef CSTRIKE_DLL // BOTPORT: TODO: move these ifdefs out
@@ -1126,6 +1129,13 @@ bool CServerGameDLL::LevelInit( const char *pMapName, char const *pMapEntities, 
 		lua_pushboolean( L, loadGame );
 		lua_pushboolean( L, background );
 	END_LUA_CALL_HOOK( 6, 0 );
+
+#ifdef SBPP
+	// todo: header?
+	extern void LuaNet_RegisterUserMessage();
+	LuaNet_RegisterUserMessage();
+    LuaNet_AddString( "__lua_net_sync__" );
+#endif
 #endif
 	return true;
 }

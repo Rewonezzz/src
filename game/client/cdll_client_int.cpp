@@ -166,6 +166,9 @@ extern vgui::IInputInternal *g_InputInternal;
 #include "luamanager.h"
 #include "luacachefile.h"
 #include "mountaddons.h"
+#ifdef SBPP
+#include "lnet_shared.h"
+#endif
 #endif
 
 #ifdef PORTAL
@@ -1763,6 +1766,11 @@ void CHLClient::LevelInitPreEntity( char const* pMapName )
 	BEGIN_LUA_CALL_HOOK( "LevelInitPreEntity" );
 		lua_pushstring( L, pMapName );
 	END_LUA_CALL_HOOK( 1, 0 );
+
+#ifdef SBPP
+	extern void LuaNet_ClientInit();
+	LuaNet_ClientInit();
+#endif
 #endif
 
 	input->LevelInit();

@@ -20,14 +20,14 @@ struct lua_MatRenderContextRef
 ** access functions (stack -> C)
 */
 
-lua_MatRenderContextRef *luaL_checkmatrendercontextref( lua_State *L, int idx );
-IMatRenderContext       *luaL_checkmatrendercontext   ( lua_State *L, int idx );
+LUALIB_API lua_MatRenderContextRef *luaL_checkmatrendercontextref( lua_State *L, int idx );
+LUALIB_API IMatRenderContext       *luaL_checkmatrendercontext   ( lua_State *L, int idx );
 
 
 /*
 ** push functions (C -> stack)
 */
 
-void lua_pushmatrendercontext( lua_State *L, IMatRenderContext *pCtx );
+LUALIB_API void lua_pushmatrendercontext( lua_State *L, IMatRenderContext *pCtx );
 
 #endif // LMATRENDERCONTEXT_H

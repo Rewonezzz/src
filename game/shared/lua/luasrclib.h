@@ -91,6 +91,11 @@ LUALIB_API int (luaopen_ITexture)(lua_State *L);
 #define LUA_MATRENDERCONTEXTLIBNAME "IMatRenderContext"
 LUALIB_API int (luaopen_IMatRenderContext)(lua_State *L);
 
+#define LUA_MATERIALVARLIBNAME "IMaterialVar"
+LUALIB_API int (luaopen_IMaterialVar)(lua_State *L);
+
+#define LUA_NETLIBNAME "net"
+LUALIB_API int (luaopen_net)(lua_State *L);
 #endif
 
 #define LUA_CONTENTSLIBNAME				"CONTENTS"

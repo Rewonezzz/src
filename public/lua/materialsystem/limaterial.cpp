@@ -18,6 +18,10 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+#ifdef SBPP
+// extern this thing
+LUA_API void          lua_pushmaterialvar  ( lua_State *L, IMaterialVar *pVar );
+#endif
 
 /*
 ** access functions (stack -> C)
@@ -297,6 +301,23 @@ static int IMaterial___tostring (lua_State *L) {
   return 1;
 }
 
+#ifdef SBPP
+#ifdef CLIENT_DLL
+static int IMaterial_FindVar( lua_State *L )
+{
+  IMaterial  *pMat     = luaL_checkmaterial( L, 1 );
+  const char *name     = luaL_checkstring( L, 2 );
+  bool        complain = lua_isboolean( L, 3 ) ? lua_toboolean( L, 3 ) != 0 : true;
+
+  bool found = false;
+  IMaterialVar *pVar = pMat->FindVar( name, &found, complain );
+
+  lua_pushmaterialvar( L, pVar );
+  lua_pushboolean( L, found );
+  return 2;
+}
+#endif
+#endif
 
 static const luaL_Reg IMaterialmeta[] = {
   {"AddRef", IMaterial_AddRef},
@@ -344,6 +365,11 @@ static const luaL_Reg IMaterialmeta[] = {
   {"ShaderParamCount", IMaterial_ShaderParamCount},
   {"UsesEnvCubemap", IMaterial_UsesEnvCubemap},
   {"WasReloadedFromWhitelist", IMaterial_WasReloadedFromWhitelist},
+#ifdef SBPP
+#ifdef CLIENT_DLL
+  {"FindVar", IMaterial_FindVar},
+#endif
+#endif
   {"__tostring", IMaterial___tostring},
   {NULL, NULL}
 };

@@ -104,6 +104,10 @@ $Project "Server (SBPP)"
 			$File "lua\lnextbotpath.cpp"
 			$File "lua\lnextbotpath.h"
 
+			$File "$SRCDIR\game\shared\lua\lnet_shared.cpp"
+			$File "$SRCDIR\game\shared\lua\lnet_shared.h"
+			$File "lua\lnet_server.cpp"
+
 			$File "$SRCDIR\game\shared\sbpp\mount.cpp"
 		}
 

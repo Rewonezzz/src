@@ -13,6 +13,9 @@
 #include "lgametrace.h"
 #include "mathlib/lvector.h"
 #include "luasrclib.h"
+#ifdef SBPP
+#include "lnet_shared.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -149,6 +152,33 @@ static int luasrc_UTIL_PlayerByIndex (lua_State *L) {
   return 1;
 }
 
+#ifdef SBPP
+static int luasrc_UTIL_AddNetworkString( lua_State *L )
+{
+  const char *name = luaL_checkstring( L, 1 );
+#ifdef CLIENT_DLL
+  return luaL_error( L, "util.AddNetworkString can only be called on the server" );
+#else
+  int id = LuaNet_AddString( name );
+  lua_pushinteger( L, id );
+  return 1;
+#endif
+}
+
+static int luasrc_UTIL_NetworkStringToID( lua_State *L )
+{
+  lua_pushinteger( L, LuaNet_GetStringID( luaL_checkstring( L, 1 ) ) );
+  return 1;
+}
+
+static int luasrc_UTIL_NetworkIDToString( lua_State *L )
+{
+  const char *s = LuaNet_GetStringName( luaL_checkint( L, 1 ) );
+  if ( s ) lua_pushstring( L, s );
+  else     lua_pushnil( L );
+  return 1;
+}
+#endif
 
 static const luaL_Reg util_funcs[] = {
   // {"UTIL_VecToYaw",  luasrc_UTIL_VecToYaw},
@@ -194,6 +224,11 @@ static const luaL_Reg util_funcs[] = {
   // {"UTIL_PlayerByIndex",  luasrc_UTIL_PlayerByIndex},
   {"PlayerByIndex",  luasrc_UTIL_PlayerByIndex},
   {"GetAllPlayers", luasrc_UTIL_GetAllPlayers},
+#ifdef SBPP
+  {"AddNetworkString", luasrc_UTIL_AddNetworkString},
+  {"NetworkStringToID", luasrc_UTIL_NetworkStringToID},
+  {"NetworkIDToString", luasrc_UTIL_NetworkIDToString},
+#endif
   {NULL, NULL}
 };
 

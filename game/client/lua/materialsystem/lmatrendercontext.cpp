@@ -24,7 +24,7 @@
 ** access functions (stack -> C)
 */
 
-lua_MatRenderContextRef *luaL_checkmatrendercontextref( lua_State *L, int idx )
+LUALIB_API lua_MatRenderContextRef *luaL_checkmatrendercontextref( lua_State *L, int idx )
 {
 	lua_MatRenderContextRef *ref =
 		(lua_MatRenderContextRef *)luaL_checkudata( L, idx, LUA_MATRENDERCONTEXTLIBNAME );
@@ -33,7 +33,7 @@ lua_MatRenderContextRef *luaL_checkmatrendercontextref( lua_State *L, int idx )
 	return ref;
 }
 
-IMatRenderContext *luaL_checkmatrendercontext( lua_State *L, int idx )
+LUALIB_API IMatRenderContext *luaL_checkmatrendercontext( lua_State *L, int idx )
 {
 	return luaL_checkmatrendercontextref( L, idx )->m_pContext;
 }
@@ -43,7 +43,7 @@ IMatRenderContext *luaL_checkmatrendercontext( lua_State *L, int idx )
 ** push functions (C -> stack)
 */
 
-void lua_pushmatrendercontext( lua_State *L, IMatRenderContext *pCtx )
+LUA_API void lua_pushmatrendercontext( lua_State *L, IMatRenderContext *pCtx )
 {
 	if ( !pCtx )
 	{

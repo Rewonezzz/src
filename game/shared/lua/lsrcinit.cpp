@@ -24,6 +24,9 @@ static const luaL_Reg luasrclibs[] = {
   {LUA_BASEPLAYERLIBNAME, luaopen_CBasePlayer_shared},
   {LUA_EFFECTDATALIBNAME, luaopen_CEffectData},
   {LUA_GAMETRACELIBNAME, luaopen_CGameTrace},
+#ifdef SBPP
+  {LUA_NETLIBNAME, luaopen_net},
+#endif
 #ifndef CLIENT_DLL
   {LUA_EFFECTSLIBNAME, luaopen_Effects},
   {LUA_HL2MPPLAYERLIBNAME, luaopen_CHL2MP_Player},
@@ -51,6 +54,7 @@ static const luaL_Reg luasrclibs[] = {
   {LUA_MESHBUILDERLIBNAME, luaopen_CMeshBuilder},
   {LUA_TEXTURELIBNAME, luaopen_ITexture},
   {LUA_MATRENDERCONTEXTLIBNAME, luaopen_IMatRenderContext},
+  {LUA_MATERIALVARLIBNAME, luaopen_IMaterialVar},
 #endif
 #endif
   {LUA_AMMODEFLIB_NAME, luaopen_AmmoDef},

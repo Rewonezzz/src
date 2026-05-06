@@ -17,7 +17,7 @@
 ** access functions (stack -> C)
 */
 
-lua_IMesh *luaL_checkimesh( lua_State *L, int idx )
+LUALIB_API lua_IMesh *luaL_checkimesh( lua_State *L, int idx )
 {
 	lua_MeshRef *ref = (lua_MeshRef *)luaL_checkudata( L, idx, LUA_IMESHLIBNAME );
 	if ( !ref || !ref->m_pMesh )
@@ -29,7 +29,7 @@ lua_IMesh *luaL_checkimesh( lua_State *L, int idx )
 ** push functions (C -> stack)
 */
 
-void lua_pushimesh( lua_State *L, lua_IMesh *pMesh, bool bOwned )
+LUA_API void lua_pushimesh( lua_State *L, lua_IMesh *pMesh, bool bOwned )
 {
 	if ( !pMesh )
 	{
