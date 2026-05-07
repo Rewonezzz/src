@@ -875,29 +875,30 @@ void CHL2MP_Player::PostThink( void )
 #endif
 
 #if defined(LUA_SDK)
-	CUtlString desiredModel;
-	int desiredSkin = 0;
-	const char* c_handmodel = engine->GetClientConVarValue( ENTINDEX( edict() ), "c_handmodel" );
+	CUtlString	desiredModel;
+	int			desiredSkin = 0;
+	const char *c_handmodel = engine->GetClientConVarValue( ENTINDEX( edict() ), "c_handmodel" );
 
-	BEGIN_LUA_CALL_HOOK("GetPlayerHandModel")
-		lua_pushhl2mpplayer(L, this);
-		lua_pushstring(L, c_handmodel);
-		lua_pushinteger(L, m_iPlayerSoundType);
-	END_LUA_CALL_HOOK(3, 2);
+	BEGIN_LUA_CALL_HOOK( "GetPlayerHandModel" )
+		lua_pushhl2mpplayer( L, this );
+		lua_pushstring( L, c_handmodel );
+		lua_pushinteger( L, m_iPlayerSoundType );
+	END_LUA_CALL_HOOK( 3, 2 );
 
-	desiredModel = lua_tostring(L, -2);
-	desiredSkin = (int)lua_tointeger(L, -1);
+	desiredModel = lua_tostring( L, -2 );
+	desiredSkin = (int)lua_tointeger( L, -1 );
 
-	lua_pop(L, 2);
+	lua_pop( L, 2 );
 
-	PrecacheModel( desiredModel.Get() );
-
-	if (m_CurrentHandModel != desiredModel)
+	if ( m_CurrentHandModel != desiredModel )
 	{
-		CBaseViewModel *pHandModel = GetViewModel(1);
+		if ( !desiredModel.IsEmpty() )
+			PrecacheModel( desiredModel.Get() );
+
+		CBaseViewModel *pHandModel = GetViewModel( 1 );
 		if ( pHandModel )
-		{	
-			pHandModel->SetModel(desiredModel.Get());
+		{
+			pHandModel->SetModel( desiredModel.Get() );
 			pHandModel->m_nSkin = desiredSkin;
 			m_CurrentHandModel = desiredModel;
 		}
