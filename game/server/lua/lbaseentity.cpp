@@ -4,7 +4,6 @@
 //
 //===========================================================================//
 
-#include "lauxlib.h"
 #define lbaseentity_cpp
 
 #include "cbase.h"

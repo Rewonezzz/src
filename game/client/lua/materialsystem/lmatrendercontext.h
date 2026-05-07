@@ -1,6 +1,6 @@
 //========== Copyright (C) 2026, Team HL2SB++, All rights reserved. ===========//
 //
-// Purpose: Lua bindings for IMatRenderContext.
+// Purpose:
 //
 //===========================================================================//
 #ifndef LMATRENDERCONTEXT_H
