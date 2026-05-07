@@ -108,12 +108,12 @@ static int luasrc_include(lua_State *L) {
   lua_getinfo(L, ">S", &ar2);
   int iLength = Q_strlen( ar2.source );
   char source[MAX_PATH];
-  Q_StrRight( ar2.source, iLength-1, source, sizeof( source ) );
+  Q_strncpy( source, ar2.source + 1, sizeof( source ) );
   Q_StripFilename( source );
   char filename[MAX_PATH];
   // @ThePixelMoon: hacky hack
   Q_snprintf( filename, sizeof( filename ), "%s/../%s", source, luaL_checkstring(L, 1) );
-  luasrc_dofile(L, filename);
+  luasrc_dofile_vfs(L, filename);
   return 0;
 }
 
@@ -125,11 +125,11 @@ static int luasrc_includeC (lua_State *L) {
   lua_getinfo(L, ">S", &ar2);
   int iLength = Q_strlen( ar2.source );
   char source[MAX_PATH];
-  Q_StrRight( ar2.source, iLength-1, source, sizeof( source ) );
+  Q_strncpy( source, ar2.source + 1, sizeof( source ) );
   Q_StripFilename( source );
   char filename[MAX_PATH];
   Q_snprintf( filename, sizeof( filename ), "%s/%s", source, luaL_checkstring(L, 1) );
-  luasrc_dofile(L, filename);
+  luasrc_dofile_vfs(L, filename);
   return 0;
 }
 
@@ -301,6 +301,45 @@ LUA_API int luasrc_dofile (lua_State *L, const char *filename) {
   return iError;
 }
 
+LUA_API int luasrc_dofile_vfs (lua_State *L, const char *filename, const char *pathID) {
+	FileHandle_t f = g_pFullFileSystem->Open( filename, "rb", pathID );
+	if ( !f ) {
+		Warning( "luasrc_dofile_vfs: couldn't open %s\n", filename );
+		return -1;
+	}
+
+	int	  len = g_pFullFileSystem->Size( f );
+	char *buf = (char *)malloc( len + 1 );
+	g_pFullFileSystem->Read( buf, len, f );
+	buf[len] = '\0';
+
+	g_pFullFileSystem->Close( f );
+
+	char *src = buf;
+	int	  srclen = len;
+	// bom
+	if ( len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF ) {
+		src += 3;
+		srclen -= 3;
+	}
+
+	char chunkname[MAX_PATH + 1];
+	Q_snprintf(chunkname, sizeof(chunkname), "@%s", filename);
+
+	int err = luaL_loadbuffer(L, src, srclen, chunkname);
+	if ( err == 0 )
+		err = lua_pcall( L, 0, LUA_MULTRET, 0 );
+
+	free( buf );
+
+	if ( err != 0 ) {
+		Warning( "%s\n", lua_tostring( L, -1 ) );
+		lua_pop( L, 1 );
+	}
+
+	return err;
+}
+
 LUA_API void luasrc_dofolder (lua_State *L, const char *path)
 {
 	FileFindHandle_t fh;
@@ -318,11 +357,9 @@ LUA_API void luasrc_dofolder (lua_State *L, const char *path)
 
 			if ( !Q_stricmp( ext, "lua" ) )
 			{
-				char relative[ 512 ];
-				char loadname[ 512 ];
+				char relative[ MAX_PATH ];
 				Q_snprintf( relative, sizeof( relative ), "%s/%s", path, fn );
-				filesystem->RelativePathToFullPath( relative, "MOD", loadname, sizeof( loadname ) );
-				luasrc_dofile( L, loadname );
+				luasrc_dofile_vfs( L, relative, "MOD" ); // sbpp: also allow packed files
 			}
 		}
 
@@ -468,8 +505,6 @@ void luasrc_LoadEntities (const char *path)
 			continue;
 		}
 
-		filesystem->RelativePathToFullPath(filename, foundPathID, fullpath, sizeof(fullpath));
-
 		lua_newtable(L);
 		char entDir[MAX_PATH];
 		Q_snprintf(entDir, sizeof(entDir), "entities/%s", classBase);
@@ -482,7 +517,7 @@ void luasrc_LoadEntities (const char *path)
 		lua_setfield(L, -2, "__factory");
 		lua_setglobal(L, "ENT");
 
-		if (luasrc_dofile(L, fullpath) == 0)
+		if (luasrc_dofile_vfs(L, filename, foundPathID) == 0)
 		{
 			lua_getglobal(L, "entity");
 			if (lua_istable(L, -1))
@@ -609,8 +644,6 @@ void luasrc_LoadWeapons (const char *path)
 			continue;
 		}
 
-		filesystem->RelativePathToFullPath(filename, foundPathID, fullpath, sizeof(fullpath));
-
 		lua_newtable(L);
 		char entDir[MAX_PATH];
 		Q_snprintf(entDir, sizeof(entDir), "weapons/%s", classBase);
@@ -621,7 +654,7 @@ void luasrc_LoadWeapons (const char *path)
 		lua_setfield(L, -2, "__base");
 		lua_setglobal(L, "SWEP");
 
-		if (luasrc_dofile(L, fullpath) == 0)
+		if (luasrc_dofile_vfs(L, filename, foundPathID) == 0)
 		{
 			lua_getglobal(L, "weapon");
 			if (lua_istable(L, -1))
@@ -682,7 +715,6 @@ bool luasrc_LoadGamemode (const char *gamemode) {
   lua_settable(L, -3);
   lua_setglobal(L, "GM");
   char filename[MAX_PATH];
-  char fullpath[MAX_PATH];
 #ifdef CLIENT_DLL
   Q_snprintf( filename, sizeof( filename ), "%s/gamemode/cl_init.lua", gamemodepath );
 #else
@@ -690,8 +722,7 @@ bool luasrc_LoadGamemode (const char *gamemode) {
 #endif
   if ( filesystem->FileExists( filename, "MOD" ) )
   {
-    filesystem->RelativePathToFullPath( filename, "MOD", fullpath, sizeof( fullpath ) );
-	if (luasrc_dofile(L, fullpath) == 0) {
+	if (luasrc_dofile_vfs(L, filename) == 0) {
 	  lua_getglobal(L, "gamemode");
 	  lua_getfield(L, -1, "register");
 	  lua_remove(L, -2);
@@ -874,28 +905,16 @@ static int DoFileCompletion( const char *partial, char commands[ COMMAND_COMPLET
 			return;
 		}
 
-		char fullpath[ 512 ] = { 0 };
+		if ( Q_strstr( args.ArgS(), ".." ) )
+			return;
+
 		char filename[ 256 ] = { 0 };
 		Q_snprintf( filename, sizeof( filename ), LUA_ROOT "/%s", args.ArgS() );
 		//Q_strlower( filename );
 		Q_FixSlashes( filename );
-		if ( filesystem->FileExists( filename, "MOD" ) )
-		{
-			filesystem->RelativePathToFullPath( filename, "MOD", fullpath, sizeof( fullpath ) );
-		}
-		else
-		{
-			Q_snprintf( fullpath, sizeof( fullpath ), "%s/" LUA_ROOT "/%s", engine->GetGameDirectory(), args.ArgS() );
-			//Q_strlower( fullpath );
-			Q_FixSlashes( fullpath );
-		}
 
-		if ( Q_strstr( fullpath, ".." ) )
-		{
-			return;
-		}
-		Msg( "Running file %s...\n", args.ArgS() );
-		luasrc_dofile( L, fullpath );
+		Msg( "Running file %s...\n", filename );
+		luasrc_dofile_vfs( L, filename );
 	}
 #else
 	CON_COMMAND_F_COMPLETION( lua_dofile, "Load and run a Lua file", 0, DoFileCompletion )
@@ -912,32 +931,16 @@ static int DoFileCompletion( const char *partial, char commands[ COMMAND_COMPLET
 			return;
 		}
 
-		char fullpath[ 512 ] = { 0 };
+		if ( Q_strstr( args.ArgS(), ".." ) )
+			return;
+
 		char filename[ 256 ] = { 0 };
 		Q_snprintf( filename, sizeof( filename ), LUA_ROOT "lua/%s", args.ArgS() );
 		//Q_strlower( filename );
 		Q_FixSlashes( filename );
-		if ( filesystem->FileExists( filename, "MOD" ) )
-		{
-			filesystem->RelativePathToFullPath( filename, "MOD", fullpath, sizeof( fullpath ) );
-		}
-		else
-		{
-			// filename is local to game dir for Steam, so we need to prepend game dir for regular file load
-			char gamePath[256];
-			engine->GetGameDir( gamePath, 256 );
-			Q_StripTrailingSlash( gamePath );
-			Q_snprintf( fullpath, sizeof( fullpath ), "%s/" LUA_ROOT "/%s", gamePath, args.ArgS() );
-			//Q_strlower( fullpath );
-			Q_FixSlashes( fullpath );
-		}
 
-		if ( Q_strstr( fullpath, ".." ) )
-		{
-			return;
-		}
-		Msg( "Running file %s...\n", args.ArgS() );
-		luasrc_dofile( L, fullpath );
+		Msg( "Running file %s...\n", filename );
+		luasrc_dofile_vfs( L, filename );
 	}
 #endif
 

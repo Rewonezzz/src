@@ -1074,8 +1074,11 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CreateInterfaceFn physi
 	luasrc_init_gameui();
 
 	luasrc_dofolder( LGameUI, LUA_PATH_GAMEUI );
+#ifdef SBPP
+	luasrc_dofile_vfs( LGameUI, "lua/handmodels/_00_handmodel.lua" ); // hackhack: register handmodels table first..
 	luasrc_dofolder( LGameUI, LUA_PATH_HANDMODELS );
-	luasrc_dofile( LGameUI, "lua/palm/cl_init.lua" );
+	luasrc_dofile_vfs( LGameUI, "lua/palm/cl_init.lua" );
+#endif
 #endif
 #ifdef SBPP
 	loading->UpdateState("Load Lua", 0.3f);
