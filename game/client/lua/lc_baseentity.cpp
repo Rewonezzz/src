@@ -1,4 +1,4 @@
-//===== Copyright © 1996-2005, Valve Corporation, All rights reserved. ======//
+//===== Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ======//
 //
 // Purpose: 
 //
@@ -139,6 +139,12 @@ static int CBaseEntity_SetNextClientThink (lua_State *L) {
   return 0;
 }
 
+#ifdef SBPP
+static int CBaseEntity_SetMaterialOverride (lua_State *L) {
+  luaL_checkentity(L, 1)->SetMaterialOverride(luaL_checkstring(L, 2));
+	return 0;
+}
+#endif
 
 static const luaL_Reg CBaseEntitymeta[] = {
   {"SpawnClientEntity", CBaseEntity_SpawnClientEntity},
@@ -165,6 +171,9 @@ static const luaL_Reg CBaseEntitymeta[] = {
   {"GetFxBlend", CBaseEntity_GetFxBlend},
   {"LODTest", CBaseEntity_LODTest},
   {"SetNextClientThink", CBaseEntity_SetNextClientThink},
+#ifdef SBPP
+  {"SetMaterialOverride", CBaseEntity_SetMaterialOverride},
+#endif
   {NULL, NULL}
 };
 

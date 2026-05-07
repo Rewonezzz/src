@@ -286,6 +286,9 @@ IMPLEMENT_SERVERCLASS_ST_NOBASE( CBaseEntity, DT_BaseEntity )
 	SendPropEHandle (SENDINFO(m_hEffectEntity)),
 	SendPropEHandle (SENDINFO_NAME(m_hMoveParent, moveparent)),
 	SendPropInt		(SENDINFO(m_iParentAttachment), NUM_PARENTATTACHMENT_BITS, SPROP_UNSIGNED),
+#ifdef SBPP
+	SendPropString  (SENDINFO(m_OverrideMaterial)),
+#endif
 
 	SendPropInt		(SENDINFO_NAME( m_MoveType, movetype ), MOVETYPE_MAX_BITS, SPROP_UNSIGNED ),
 	SendPropInt		(SENDINFO_NAME( m_MoveCollide, movecollide ), MOVECOLLIDE_MAX_BITS, SPROP_UNSIGNED ),
@@ -6421,6 +6424,18 @@ void CBaseEntity::AppendContextToCriteria( AI_CriteriaSet& set, const char *pref
 		set.AppendCriteria( sz, value );
 	}
 }
+
+#ifdef SBPP
+void CBaseEntity::SetMaterialOverride( const char *strMaterial )
+{
+	Q_strncpy( m_OverrideMaterial.GetForModify(), strMaterial, MAX_PATH );
+}
+
+const char *CBaseEntity::GetMaterialOverride()
+{
+	return m_OverrideMaterial.Get();
+}
+#endif
 
 //-----------------------------------------------------------------------------
 // Purpose: Removes expired concepts from list

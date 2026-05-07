@@ -4,6 +4,7 @@
 //
 //===========================================================================//
 
+#include "lauxlib.h"
 #define lbaseentity_cpp
 
 #include "cbase.h"
@@ -674,6 +675,12 @@ static int CBaseEntity_IsItem (lua_State *L) {
   return 1;
 }
 
+#ifdef SBPP
+static int CBaseEntity_SetMaterialOverride (lua_State *L) {
+  luaL_checkentity(L, 1)->SetMaterialOverride(luaL_checkstring(L, 2));
+	return 0;
+}
+#endif
 
 static const luaL_Reg CBaseEntitymeta[] = {
   {"RecalcHasPlayerChildBit", CBaseEntity_RecalcHasPlayerChildBit},
@@ -797,6 +804,9 @@ static const luaL_Reg CBaseEntitymeta[] = {
   {"SetMoveDoneTime", CBaseEntity_SetMoveDoneTime},
   {"GetSoundEmissionOrigin", CBaseEntity_GetSoundEmissionOrigin},
   {"IsItem", CBaseEntity_IsItem},
+#ifdef SBPP
+  {"SetMaterialOverride", CBaseEntity_SetMaterialOverride},
+#endif
   {NULL, NULL}
 };
 

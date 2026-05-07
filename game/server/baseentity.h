@@ -843,6 +843,10 @@ public:
 	// Henry; There's an IsPlayer and IsWorld and such, why not an IsWeapon?
 	virtual bool	IsWeapon( void ) const { return false; }
 #endif
+#ifdef SBPP
+	virtual void SetMaterialOverride(const char *);
+	virtual const char *GetMaterialOverride();
+#endif
 
 protected:
 
@@ -1651,6 +1655,9 @@ protected:
 
 	// FIXME: Make this private! Still too many references to do so...
 	CNetworkVar( int, m_spawnflags );
+#ifdef SBPP
+	CNetworkString( m_OverrideMaterial, MAX_PATH );
+#endif
 
 private:
 	int		m_iEFlags;	// entity flags EFL_*

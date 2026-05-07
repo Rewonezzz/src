@@ -464,6 +464,10 @@ BEGIN_RECV_TABLE_NOBASE(C_BaseEntity, DT_BaseEntity)
 	RecvPropInt( RECVINFO_NAME(m_hNetworkMoveParent, moveparent), 0, RecvProxy_IntToMoveParent ),
 	RecvPropInt( RECVINFO( m_iParentAttachment ) ),
 
+#ifdef SBPP
+	RecvPropString( RECVINFO( m_OverrideMaterial )),
+#endif
+	
 	RecvPropInt( "movetype", 0, SIZEOF_IGNORE, 0, RecvProxy_MoveType ),
 	RecvPropInt( "movecollide", 0, SIZEOF_IGNORE, 0, RecvProxy_MoveCollide ),
 	RecvPropDataTable( RECVINFO_DT( m_Collision ), 0, &REFERENCE_RECV_TABLE(DT_CollisionProperty) ),
@@ -2102,6 +2106,20 @@ void C_BaseEntity::UpdatePartitionListEntry()
 	partition->RemoveAndInsert( PARTITION_CLIENT_SOLID_EDICTS | PARTITION_CLIENT_RESPONSIVE_EDICTS | PARTITION_CLIENT_NON_STATIC_EDICTS, list, CollisionProp()->GetPartitionHandle() );
 }
 
+#ifdef SBPP
+void C_BaseEntity::SetMaterialOverride( const char *strMaterial )
+{
+	if ( strMaterial == NULL )
+		Q_memset( m_OverrideMaterial, 0, sizeof( m_OverrideMaterial ) );
+	else
+		Q_strncpy( m_OverrideMaterial, strMaterial, sizeof( m_OverrideMaterial ) );
+}
+
+const char *C_BaseEntity::GetMaterialOverride()
+{
+	return m_OverrideMaterial;
+}
+#endif
 
 void C_BaseEntity::NotifyShouldTransmit( ShouldTransmitState_t state )
 {
