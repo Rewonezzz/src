@@ -627,6 +627,9 @@ void CMainMenu::LoadGameMenu()
 	}
 
 	int y = scheme()->GetProportionalScaledValue( 165 );
+	if ( engine->IsInGame() )
+		y = scheme()->GetProportionalScaledValue( 135 ); // hack: this sucks but at least it aligns correctly
+
 	int x = scheme()->GetProportionalScaledValue( 75 );
 	int spacing = scheme()->GetProportionalScaledValue( 25 );
 
@@ -671,6 +674,8 @@ void CMainMenu::LoadGameMenu()
 	}
 
 	pKV->deleteThis();
+
+	PerformLayout(); // todo: should this be here?
 }
 
 void CMainMenu::PerformLayout()
@@ -690,7 +695,10 @@ void CMainMenu::PerformLayout()
 	int w = 912 * scaleX;
 	int h = 512 * scaleY;
 
-	m_pLogo->SetBounds(80 * scaleX, -25 * scaleY, w, h);
+	if ( engine->IsInGame() )
+		m_pLogo->SetBounds(80 * scaleX, -80 * scaleY, w, h);
+	else
+		m_pLogo->SetBounds(80 * scaleX, -25 * scaleY, w, h);
 
 	if ( m_pBackground )
 		m_pBackground->SetBounds( 0, 0, wide, tall );
