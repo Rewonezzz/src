@@ -1,4 +1,4 @@
-//===== Copyright © 1996-2005, Valve Corporation, All rights reserved. ======//
+//===== Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ======//
 //
 // Purpose: 
 //
@@ -447,7 +447,20 @@ static int luasrc_ConVar (lua_State *L) {
     return 1;
   }
 
-  ConVar *pConVar = new ConVar(strdup(pName), luaL_checkstring(L, 2), luaL_optint(L, 3, 0), strdup(luaL_optstring(L, 4, 0)), luaL_optboolean(L, 5, 0), luaL_optnumber(L, 6, 0.0), luaL_optboolean(L, 7, 0), luaL_optnumber(L, 8, 0));
+  const char *pDefault = luaL_checkstring(L, 2);
+  int   flags          = luaL_optint(L, 3, 0);
+  const char *pHelp    = luaL_optstring(L, 4, NULL);
+  bool  bMin           = luaL_optboolean(L, 5, 0);
+  float fMin           = luaL_optnumber(L, 6, 0.0);
+  bool  bMax           = luaL_optboolean(L, 7, 0);
+  float fMax           = luaL_optnumber(L, 8, 0.0);
+
+  ConVar *pConVar = new ConVar(
+      strdup(pName),
+      strdup(pDefault ? pDefault : ""),
+      flags,
+      strdup(pHelp ? pHelp : ""),
+      bMin, fMin, bMax, fMax );
 
   lookup = m_ConVarDatabase.Insert( pName, pConVar );
   Assert( lookup != m_ConVarDatabase.InvalidIndex() );
