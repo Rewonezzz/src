@@ -21,8 +21,11 @@ static const char *LUA_NET_USERMSG_NAME = "LuaNetMessage";
 
 void LuaNet_RegisterUserMessage()
 {
-	usermessages->Register( LUA_NET_USERMSG_NAME, -1 );
-	g_iLuaNetMsgIndex = usermessages->LookupUserMessage( LUA_NET_USERMSG_NAME );
+	int iIndex = usermessages->LookupUserMessage( LUA_NET_USERMSG_NAME );
+	if ( iIndex == -1 )
+		usermessages->Register( LUA_NET_USERMSG_NAME, -1 );
+
+	g_iLuaNetMsgIndex = iIndex;
 }
 
 
